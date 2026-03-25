@@ -33,6 +33,9 @@
 
   <!-- 主界面 -->
   <div id="mainInterface" class="flex h-screen overflow-hidden">
+    <!-- 侧边栏遮罩层 -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+    
     <!-- 左侧导航栏 -->
     <div class="w-64 bg-gray-200 border-r border-gray-300 flex flex-col dark:bg-gray-800 dark:border-gray-700"
       id="sidebar">
@@ -172,6 +175,14 @@
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- 顶部搜索栏 -->
       <div class="p-4 border-b border-gray-700 flex items-center gap-3 dark:border-gray-700">
+        <!-- 菜单按钮（移动端） -->
+        <button id="menuBtn"
+          class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-300 hover:bg-gray-400 text-gray-800 transition-all duration-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 flex-shrink-0 md:hidden"
+          title="菜单">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+          </svg>
+        </button>
         <!-- 返回按钮 -->
         <button id="backToSearchBtn"
           class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-300 hover:bg-gray-400 text-gray-800 transition-all duration-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 hidden flex-shrink-0"
@@ -539,6 +550,29 @@
     </div>
   </div>
 
+  <!-- 底部导航栏（移动端） -->
+  <div class="bottom-nav fixed bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300 flex justify-around items-center py-2 z-40 dark:bg-gray-800 dark:border-gray-700 md:hidden">
+    <button id="bottomHomeBtn" class="flex flex-col items-center px-4 py-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+      <span class="text-xs mt-1 dark:text-white">首页</span>
+    </button>
+    <button id="bottomSearchBtn" class="flex flex-col items-center px-4 py-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+      <span class="text-xs mt-1 dark:text-white">搜索</span>
+    </button>
+    <button id="bottomLibraryBtn" class="flex flex-col items-center px-4 py-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      <span class="text-xs mt-1 dark:text-white">我的</span>
+    </button>
+  </div>
+
+  <script src="./js/utils/helpers.js"></script>
   <script src="./js/app.js"></script>
   <script>
       (function () {

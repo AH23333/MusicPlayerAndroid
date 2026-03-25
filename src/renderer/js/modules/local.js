@@ -1,5 +1,6 @@
 import store from '../store/index.js'
 import api from '../services/api.js'
+import storageAdapter from '../services/storageAdapter.js'
 
 class Local {
   // 加载本地歌曲

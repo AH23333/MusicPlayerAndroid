@@ -262,10 +262,23 @@
   /* 侧边栏样式 */
   #sidebar {
     position: relative;
+    transition: transform 0.3s ease-in-out;
   }
 
   #sidebarResizer {
     z-index: 10;
+  }
+
+  /* 移动端侧边栏样式 */
+  @media (max-width: 768px) {
+    #sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100%;
+      z-index: 50;
+      transform: translateX(-100%);
+    }
   }
 }
 
@@ -294,3 +307,152 @@
     @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 bg-white text-gray-800 transition-all duration-200 dark:bg-gray-800 dark:border-gray-600 dark:text-white;
   }
 }
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  /* 隐藏侧边栏，显示底部导航栏 */
+  #sidebar {
+    display: none;
+  }
+  
+  .bottom-nav {
+    display: flex;
+  }
+  
+  /* 调整主内容区 */
+  #mainInterface {
+    flex-direction: column;
+  }
+  
+  /* 增大触摸区域 */
+  button, a, .song-item {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  /* 调整播放控制按钮 */
+  .player-controls button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  /* 调整搜索栏 */
+  #searchInput {
+    padding: 10px 16px;
+  }
+  
+  /* 调整歌词界面 */
+  #lyricsInterface {
+    padding: 16px;
+  }
+  
+  .lyric-line {
+    font-size: 1.2rem;
+    min-height: 2.5rem;
+  }
+  
+  .lyric-line.active {
+    font-size: 1.5rem !important;
+  }
+  
+  /* 调整歌曲列表项 */
+  .song-item {
+    padding: 12px 16px;
+  }
+  
+  /* 调整字体大小 */
+  h2 {
+    font-size: 1.5rem;
+  }
+  
+  h3 {
+    font-size: 1.25rem;
+  }
+  
+  /* 调整间距 */
+  .p-6 {
+    padding: 16px;
+  }
+  
+  .p-4 {
+    padding: 12px;
+  }
+  
+  /* 调整播放列表浮窗 */
+  #playlistFloat {
+    width: 100%;
+    right: 0;
+  }
+  
+  /* 调整底部播放器 */
+  .fixed.bottom-0 {
+    bottom: 60px; /* 为底部导航栏留出空间 */
+  }
+  
+  /* 调整歌单详情区域 */
+  #playlistInfoArea {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  #playlistCoverContainer {
+    margin-bottom: 16px;
+  }
+  
+  /* 调整搜索结果区域 */
+  #searchResultsSection {
+    margin-bottom: 80px; /* 为底部导航栏和播放器留出空间 */
+  }
+  
+  /* 调整歌单详情区域 */
+  #playlistDetailSection {
+    margin-bottom: 80px; /* 为底部导航栏和播放器留出空间 */
+  }
+  
+  /* 底部导航栏激活状态 */
+  .bottom-nav button.active {
+    color: #1DB954;
+  }
+  
+  .bottom-nav button.active span {
+    color: #1DB954;
+  }
+  
+  .dark .bottom-nav button.active {
+    color: #1DB954;
+  }
+  
+  .dark .bottom-nav button.active span {
+    color: #1DB954;
+  }
+  
+  /* 底部导航栏按钮触摸区域 */
+  .bottom-nav button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  /* 桌面端隐藏底部导航栏 */
+  @media (min-width: 768px) {
+    .bottom-nav {
+      display: none;
+    }
+  }
+  
+  /* 移动端侧边栏样式 */
+  @media (max-width: 767px) {
+    #sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100%;
+      z-index: 50;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease-in-out;
+    }
+    
+    #sidebar.show {
+      transform: translateX(0);
+    }
+  }
+} 

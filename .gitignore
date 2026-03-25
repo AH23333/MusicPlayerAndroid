@@ -39,3 +39,28 @@ Latest.json
 MyFavorite.json
 PlayList.json
 SearchHistory.json
+
+# Android build output
+android/app/build/
+android/build/
+
+# Gradle
+.gradle/
+android/gradle/wrapper/gradle-wrapper.jar
+
+# Snapshot directory
+snapshot/
+
+# Capacitor
+capacitor.config.ts
+
+# IDE
+.idea/
+.vscode/
+
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

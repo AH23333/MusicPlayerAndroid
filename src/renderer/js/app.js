@@ -3,6 +3,331 @@
 ;(function () {
   "use strict"
 
+  // 导入API服务
+  const api = {
+    // 搜索音乐
+    searchMusic: async function (keyword, offset = 0) {
+      try {
+        // 构建搜索 URL
+        const searchUrl = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=${offset}&limit=20`
+
+        // 使用 fetch 进行网络请求
+        const response = await fetch(searchUrl, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            Referer: "https://music.163.com/",
+            Origin: "https://music.163.com/",
+          },
+        })
+
+        if (!response.ok) {
+          // 如果直接请求失败，尝试使用 CORS 代理
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(searchUrl)}`
+          const proxyResponse = await fetch(proxyUrl)
+
+          if (!proxyResponse.ok) {
+            throw new Error(`搜索失败，状态码：${proxyResponse.status}`)
+          }
+
+          return await proxyResponse.json()
+        }
+
+        return await response.json()
+      } catch (error) {
+        console.error("搜索音乐失败:", error)
+        return []
+      }
+    },
+
+    // 保存播放列表
+    savePlaylist: async function (playlist) {
+      return await storageAdapter.set("PlayList", playlist)
+    },
+
+    // 读取播放列表
+    readPlaylist: async function () {
+      return await storageAdapter.get("PlayList", [])
+    },
+
+    // 获取歌词
+    fetchLyrics: async function (songId) {
+      try {
+        const lyricUrl = `https://api.qijieya.cn/meting/?server=netease&type=lrc&id=${songId}`
+
+        const response = await fetch(lyricUrl, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          },
+        })
+
+        if (!response.ok) {
+          // 如果直接请求失败，尝试使用 CORS 代理
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(lyricUrl)}`
+          const proxyResponse = await fetch(proxyUrl)
+
+          if (!proxyResponse.ok) {
+            throw new Error(`获取歌词失败，状态码：${proxyResponse.status}`)
+          }
+
+          return await proxyResponse.json()
+        }
+
+        return await response.json()
+      } catch (error) {
+        console.error("获取歌词失败:", error)
+        return null
+      }
+    },
+
+    // 读取我喜欢的歌曲
+    readLikedSongs: async function () {
+      return await storageAdapter.get("MyFavorite", [])
+    },
+
+    // 保存我喜欢的歌曲
+    saveLikedSongs: async function (likedSongs) {
+      return await storageAdapter.set("MyFavorite", likedSongs)
+    },
+
+    // 读取关注歌手
+    readFollowedArtists: async function () {
+      return await storageAdapter.get("FollowedArtists", [])
+    },
+
+    // 保存关注歌手
+    saveFollowedArtists: async function (followedArtists) {
+      return await storageAdapter.set("FollowedArtists", followedArtists)
+    },
+
+    // 读取自定义歌单
+    readCustomPlaylists: async function () {
+      return await storageAdapter.get("CustomPlaylists", [])
+    },
+
+    // 保存自定义歌单
+    saveCustomPlaylists: async function (playlists) {
+      return await storageAdapter.set("CustomPlaylists", playlists)
+    },
+
+    // 读取最近播放
+    readLatestPlayed: async function () {
+      return await storageAdapter.get("Latest", [])
+    },
+
+    // 保存最近播放
+    saveLatestPlayed: async function (latestPlayed) {
+      return await storageAdapter.set("Latest", latestPlayed)
+    },
+
+    // 读取自建歌单
+    readDIYPlaylists: async function () {
+      return await storageAdapter.get("DIYSongList", [])
+    },
+
+    // 保存自建歌单
+    saveDIYPlaylists: async function (playlists) {
+      return await storageAdapter.set("DIYSongList", playlists)
+    },
+
+    // 保存歌单封面
+    savePlaylistCover: async function (data) {
+      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
+      console.log("保存歌单封面:", data)
+      return { success: false, message: "暂不支持保存封面" }
+    },
+
+    // 导出歌单
+    exportPlaylist: async function (playlist) {
+      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
+      console.log("导出歌单:", playlist)
+      return { success: false, message: "暂不支持导出歌单" }
+    },
+
+    // 导入歌单
+    importPlaylist: async function () {
+      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
+      console.log("导入歌单")
+      return { success: false, message: "暂不支持导入歌单" }
+    },
+
+    // 导出用户信息
+    exportUserInfo: async function () {
+      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
+      console.log("导出用户信息")
+      return { success: false, message: "暂不支持导出用户信息" }
+    },
+
+    // 导入用户信息
+    importUserInfo: async function () {
+      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
+      console.log("导入用户信息")
+      return { success: false, message: "暂不支持导入用户信息" }
+    },
+
+    // 读取搜索历史
+    readSearchHistory: async function () {
+      return await storageAdapter.get("SearchHistory", [])
+    },
+
+    // 保存搜索历史
+    saveSearchHistory: async function (searchHistory) {
+      return await storageAdapter.set("SearchHistory", searchHistory)
+    },
+
+    // 读取本地歌曲
+    readLocalSongs: async function () {
+      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
+      return []
+    },
+
+    // 导入本地歌曲
+    importLocalSongs: async function (filePaths) {
+      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
+      console.log("导入本地歌曲:", filePaths)
+      return { success: false, message: "暂不支持导入本地歌曲" }
+    },
+
+    // 删除本地歌曲
+    deleteLocalSong: async function (songUrl) {
+      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
+      console.log("删除本地歌曲:", songUrl)
+      return { success: false, message: "暂不支持删除本地歌曲" }
+    },
+
+    // 打开文件选择对话框
+    openFileDialog: async function () {
+      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
+      console.log("打开文件选择对话框")
+      return []
+    },
+
+    // 检查更新
+    checkForUpdates: async function () {
+      // 简化实现，实际项目中可能需要自定义更新检查逻辑
+      console.log("检查更新")
+      return { success: false, message: "暂不支持检查更新" }
+    },
+
+    // 打开下载页面
+    openDownloadPage: async function (url) {
+      // 使用浏览器打开链接
+      window.open(url, "_blank")
+      return { success: true }
+    },
+
+    // 监听更新可用事件
+    onUpdateAvailable: function (callback) {
+      // 简化实现，实际项目中可能需要自定义更新检查逻辑
+      console.log("监听更新可用事件")
+    },
+  }
+
+  // 导入存储适配器
+  const storageAdapter = {
+    // 检查环境
+    getEnvironment: function () {
+      if (typeof window.Capacitor !== "undefined") return "capacitor"
+      return "browser"
+    },
+
+    // 保存数据
+    async set(key, value) {
+      try {
+        const jsonValue = JSON.stringify(value)
+
+        if (
+          typeof window.Capacitor !== "undefined" &&
+          window.Capacitor.Plugins &&
+          window.Capacitor.Plugins.Preferences
+        ) {
+          // 使用 Capacitor Preferences
+          await window.Capacitor.Plugins.Preferences.set({
+            key: key,
+            value: jsonValue,
+          })
+        } else {
+          // 使用 localStorage 作为浏览器 fallback
+          localStorage.setItem(key, jsonValue)
+        }
+        return true
+      } catch (error) {
+        console.error("保存数据失败:", error)
+        return false
+      }
+    },
+
+    // 读取数据
+    async get(key, defaultValue = []) {
+      try {
+        let jsonValue
+
+        if (
+          typeof window.Capacitor !== "undefined" &&
+          window.Capacitor.Plugins &&
+          window.Capacitor.Plugins.Preferences
+        ) {
+          // 使用 Capacitor Preferences
+          const result = await window.Capacitor.Plugins.Preferences.get({
+            key: key,
+          })
+          jsonValue = result.value
+        } else {
+          // 使用 localStorage 作为浏览器 fallback
+          jsonValue = localStorage.getItem(key)
+        }
+
+        return jsonValue ? JSON.parse(jsonValue) : defaultValue
+      } catch (error) {
+        console.error("读取数据失败:", error)
+        return defaultValue
+      }
+    },
+
+    // 删除数据
+    async remove(key) {
+      try {
+        if (
+          typeof window.Capacitor !== "undefined" &&
+          window.Capacitor.Plugins &&
+          window.Capacitor.Plugins.Preferences
+        ) {
+          // 使用 Capacitor Preferences
+          await window.Capacitor.Plugins.Preferences.remove({ key: key })
+        } else {
+          // 使用 localStorage 作为浏览器 fallback
+          localStorage.removeItem(key)
+        }
+        return true
+      } catch (error) {
+        console.error("删除数据失败:", error)
+        return false
+      }
+    },
+
+    // 清空所有数据
+    async clear() {
+      try {
+        if (
+          typeof window.Capacitor !== "undefined" &&
+          window.Capacitor.Plugins &&
+          window.Capacitor.Plugins.Preferences
+        ) {
+          // 使用 Capacitor Preferences
+          await window.Capacitor.Plugins.Preferences.clear()
+        } else {
+          // 使用 localStorage 作为浏览器 fallback
+          localStorage.clear()
+        }
+        return true
+      } catch (error) {
+        console.error("清空数据失败:", error)
+        return false
+      }
+    },
+  }
+
   // ========== 性能优化辅助函数 ==========
   function debounce(fn, delay) {
     let timer
@@ -43,6 +368,7 @@
   let currentLyrics = []
   let lyricLines = []
   let searchOffset = 0
+  let hasMoreResults = true
   let isLoadingMore = false
   let currentPlaylist = null
   let currentCover = null
@@ -69,7 +395,7 @@
       if (likedSavesQueue.length) {
         const latest = likedSavesQueue[likedSavesQueue.length - 1]
         likedSongs = latest
-        await window.ElectronAPI.saveLikedSongs(likedSongs)
+        await api.saveLikedSongs(likedSongs)
         if (likeCount) likeCount.textContent = likedSongs.length
         likedSavesQueue = []
       }
@@ -83,7 +409,7 @@
       if (recentSavesQueue.length) {
         const latest = recentSavesQueue[recentSavesQueue.length - 1]
         latestPlayed = latest
-        await window.ElectronAPI.saveLatestPlayed(latestPlayed)
+        await api.saveLatestPlayed(latestPlayed)
         if (recentCount) recentCount.textContent = latestPlayed.length
         recentSavesQueue = []
       }
@@ -194,25 +520,25 @@
   function bindUserInfoEvents() {
     if (exportUserBtn) {
       exportUserBtn.addEventListener("click", async () => {
-        const result = await window.ElectronAPI.exportUserInfo()
+        const result = await api.exportUserInfo()
         if (result.success) {
           showToast(`用户信息导出成功：${result.filePath}`)
         } else {
-          showToast(`导出失败：${result.error}`)
+          showToast(`导出失败：${result.message}`)
         }
       })
     }
 
     if (importUserBtn) {
       importUserBtn.addEventListener("click", async () => {
-        const result = await window.ElectronAPI.importUserInfo()
+        const result = await api.importUserInfo()
         if (result.success) {
           showToast("用户信息导入成功，重启应用生效")
           setTimeout(() => {
             window.location.reload()
           }, 1500)
         } else {
-          showToast(`导入失败：${result.error}`)
+          showToast(`导入失败：${result.message}`)
         }
       })
     }
@@ -220,7 +546,7 @@
     if (checkUpdateBtn) {
       checkUpdateBtn.addEventListener("click", async () => {
         hideUpdateBadge()
-        const result = await window.ElectronAPI.checkForUpdates()
+        const result = await api.checkForUpdates()
         if (result && result.success) {
           if (result.hasUpdate) {
             showUpdateModal(result)
@@ -233,7 +559,7 @@
       })
     }
 
-    window.ElectronAPI.onUpdateAvailable((info) => {
+    api.onUpdateAvailable((info) => {
       showUpdateBadge()
       showUpdateModal(info)
     })
@@ -293,12 +619,10 @@
       .getElementById("updateDownloadBtn")
       .addEventListener("click", async () => {
         if (currentUpdateInfo && currentUpdateInfo.downloadUrl) {
-          await window.ElectronAPI.openDownloadPage(
-            currentUpdateInfo.downloadUrl
-          )
+          await api.openDownloadPage(currentUpdateInfo.downloadUrl)
           showToast("请下载最新版本覆盖安装，记得备份用户数据！")
         } else {
-          await window.ElectronAPI.openDownloadPage()
+          await api.openDownloadPage()
         }
         hideUpdateModal()
       })
@@ -310,7 +634,7 @@
     document
       .getElementById("updateGitHubBtn")
       .addEventListener("click", async () => {
-        await window.ElectronAPI.openDownloadPage()
+        await api.openDownloadPage()
         showToast("正在打开GitHub releases页面...")
         hideUpdateModal()
       })
@@ -371,7 +695,7 @@
       })
       playlistList.appendChild(li)
     })
-    window.ElectronAPI.savePlaylist(playQueue)
+    api.savePlaylist(playQueue)
   }
 
   function renderPlaylistSidebar() {
@@ -445,35 +769,9 @@
         if (searchInput) searchInput.value = item
         if (searchHistoryContainer)
           searchHistoryContainer.classList.add("hidden")
-        if (searchInput && searchInput.value.trim() !== "") {
-          if (clearSearchBtn) clearSearchBtn.classList.remove("hidden")
-        } else {
-          if (clearSearchBtn) clearSearchBtn.classList.add("hidden")
-        }
         const keyword = item.trim()
         if (keyword) {
-          // 设置标题为"搜索结果"
-          const titleElement = document.querySelector(
-            "#searchResultsSection h2"
-          )
-          if (titleElement) titleElement.textContent = "搜索结果"
-          searchOffset = 0
-          if (searchResultList) searchResultList.innerHTML = ""
-          if (searchResultsSection)
-            searchResultsSection.classList.remove("hidden")
-          if (playlistDetailSection)
-            playlistDetailSection.classList.add("hidden")
-          if (backToSearchBtn) backToSearchBtn.classList.add("hidden")
-          if (searchResultList)
-            searchResultList.innerHTML =
-              '<div class="p-10 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div><p class="mt-2 text-gray-600 dark:text-gray-400">搜索中...</p></div>'
-          await loadSearchResults(keyword, searchOffset)
-          await updateSearchHistory(keyword)
-          if (searchResultsSection) {
-            searchResultsSection.classList.remove("fade-in")
-            void searchResultsSection.offsetWidth
-            searchResultsSection.classList.add("fade-in")
-          }
+          await unifiedSearch(keyword)
         }
       })
       searchHistoryList.appendChild(li)
@@ -487,7 +785,7 @@
       searchHistory = searchHistory.slice(0, MAX_SEARCH_HISTORY)
     }
     try {
-      await window.ElectronAPI.saveSearchHistory(searchHistory)
+      await api.saveSearchHistory(searchHistory)
     } catch (err) {
       console.error("保存搜索历史失败:", err)
     }
@@ -610,6 +908,11 @@
   // ========== 歌词核心功能 ==========
   function parseLyrics(lrcText) {
     if (!lrcText) return []
+    // 使用helpers.js中的parseLyrics函数
+    if (window.helpers && window.helpers.parseLyrics) {
+      return window.helpers.parseLyrics(lrcText)
+    }
+    //  fallback to original implementation if helpers is not available
     const lyrics = []
     const lines = lrcText.split("\n")
     const timeRegex = /\[(\d{1,2}):(\d{2})(?:[:.](\d{2,3}))?\]/g
@@ -792,7 +1095,7 @@
         '<div class="lyrics-loading">🎵 歌词加载中...</div>'
     }
     try {
-      const lyrics = await window.ElectronAPI.fetchLyrics(song.songId)
+      const lyrics = await api.fetchLyrics(song.songId)
       if (lyrics && (lyrics.lrc || lyrics.tlrc)) {
         renderLyrics(lyrics.lrc || lyrics.tlrc, song.songId)
       } else {
@@ -811,6 +1114,17 @@
   function showPlaylistDetail(playlist) {
     currentPlaylist = playlist
     if (backToSearchBtn) backToSearchBtn.classList.remove("hidden")
+
+    // 为自定义歌单激活底部导航栏的"我的"按钮
+    if (
+      playlist.id &&
+      playlist.id !== "liked" &&
+      playlist.id !== "recent" &&
+      playlist.id !== "local" &&
+      playlist.id !== "followed"
+    ) {
+      setActiveBottomNav("local")
+    }
 
     if (
       playlist.id === "liked" ||
@@ -848,11 +1162,11 @@
       if (playPlaylistBtnEl) playPlaylistBtnEl.classList.remove("hidden")
       if (exportPlaylistBtnEl) {
         exportPlaylistBtnEl.onclick = async function () {
-          const result = await window.ElectronAPI.exportPlaylist(playlist)
+          const result = await api.exportPlaylist(playlist)
           if (result.success) {
             showToast(`歌单导出成功：${result.filePath}`)
           } else {
-            showToast(`导出失败：${result.error}`)
+            showToast(`导出失败：${result.message}`)
           }
         }
       }
@@ -945,8 +1259,8 @@
       li.innerHTML = `
         <div class="flex items-center justify-between">
           <div class="flex-1 min-w-0">
-            <h3 class="font-medium dark:text-white truncate">${escapeHtml(song.name)}</h3>
-            <p class="text-xs text-gray-400 dark:text-gray-500 truncate">${escapeHtml(song.artist)} - ${escapeHtml(song.album)}</p>
+            <h3 class="font-medium dark:text-white truncate">${song.name}</h3>
+            <p class="text-xs text-gray-400 dark:text-gray-500 truncate">${song.artist} - ${song.album}</p>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
             <button class="like-btn ${isLiked ? "text-red-500" : "text-gray-400 dark:text-gray-500"} hover:text-red-500 transition-colors" data-song-id="${song.id}">
@@ -986,7 +1300,7 @@
   function removeFromCustomPlaylist(playlist, index) {
     const song = playlist.songs[index]
     playlist.songs.splice(index, 1)
-    window.ElectronAPI.saveDIYPlaylists(diyPlaylists)
+    api.saveDIYPlaylists(diyPlaylists)
     renderPlaylistDetail(playlist)
     renderPlaylistSidebar()
     showToast(`已从歌单《${playlist.name}》中移除《${song.name}》`)
@@ -1086,7 +1400,7 @@
         const index = diyPlaylists.findIndex((p) => p.id === playlist.id)
         if (index > -1) {
           diyPlaylists.splice(index, 1)
-          window.ElectronAPI.saveDIYPlaylists(diyPlaylists)
+          api.saveDIYPlaylists(diyPlaylists)
           renderPlaylistSidebar()
           if (currentPlaylist && currentPlaylist.id === playlist.id) {
             backToSearch()
@@ -1216,7 +1530,7 @@
     }
 
     try {
-      await window.ElectronAPI.saveFollowedArtists(followedArtists)
+      await api.saveFollowedArtists(followedArtists)
       const followCountElement = document.getElementById("followCount")
       if (followCountElement)
         followCountElement.textContent = followedArtists.length
@@ -1297,25 +1611,28 @@
     songs.forEach((song, idx) => {
       if (!song.id) return
       const isLiked = likedSongs.some((item) => item.id === song.id)
+      const artist =
+        song.ar && song.ar.length > 0 ? song.ar[0].name : "未知艺术家"
+      const album = song.al && song.al.name ? song.al.name : "未知专辑"
       const li = document.createElement("li")
       li.className = "song-item p-4 transition-colors duration-200"
       li.innerHTML = `
-        <div class="flex items-center justify-between">
-          <div class="flex-1 min-w-0">
-            <h3 class="font-medium dark:text-white truncate">${escapeHtml(song.name)}</h3>
-            <p class="text-sm text-gray-400 dark:text-gray-500 truncate">${escapeHtml(song.artist)} - ${escapeHtml(song.album)}</p>
-          </div>
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <button class="like-btn ${isLiked ? "text-red-500" : "text-gray-400 dark:text-gray-500"} hover:text-red-500 transition-colors" data-song-id="${song.id}">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="${isLiked ? "currentColor" : "none"}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-            </button>
-            <button class="add-to-playlist" data-song-id="${song.id}">+</button>
-            <button class="more-btn" data-song-id="${song.id}">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
-            </button>
-          </div>
+      <div class="flex items-center justify-between">
+        <div class="flex-1 min-w-0">
+          <h3 class="font-medium dark:text-white truncate">${song.name}</h3>
+          <p class="text-sm text-gray-400 dark:text-gray-500 truncate">${artist} - ${album}</p>
         </div>
-      `
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <button class="like-btn ${isLiked ? "text-red-500" : "text-gray-400 dark:text-gray-500"} hover:text-red-500 transition-colors" data-song-id="${song.id}">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="${isLiked ? "currentColor" : "none"}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+          </button>
+          <button class="add-to-playlist" data-song-id="${song.id}">+</button>
+          <button class="more-btn" data-song-id="${song.id}">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+          </button>
+        </div>
+      </div>
+    `
       const globalIndex = searchResults.length - songs.length + idx
       li.dataset.index = globalIndex
       li.dataset.list = "search"
@@ -1342,6 +1659,120 @@
       loadMoreBtn.style.margin = "0 auto"
     }
   }
+
+  // ========== 统一搜索函数 ==========
+async function unifiedSearch(keyword) {
+  if (!keyword || isSearching) return
+  isSearching = true
+  try {
+    // 强制获取最新容器
+    const container = document.getElementById("searchResultList")
+    const loadMore = document.getElementById("loadMoreBtn")
+    const resultsSection = document.getElementById("searchResultsSection")
+    const detailSection = document.getElementById("playlistDetailSection")
+    const backBtn = document.getElementById("backToSearchBtn")
+
+    // 显示加载动画
+    if (container) {
+      container.innerHTML = `<div class="p-10 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div><p class="mt-2 text-gray-600 dark:text-gray-400">搜索中...</p></div>`
+    }
+    if (resultsSection) resultsSection.classList.remove("hidden")
+    if (detailSection) detailSection.classList.add("hidden")
+    if (backBtn) backBtn.classList.add("hidden")
+
+    const url = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=0&limit=20`
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        Referer: "https://music.163.com/",
+        Origin: "https://music.163.com/",
+      },
+    })
+    const data = await response.json()
+    const songs = data.result?.songs || []
+
+    if (songs.length === 0) {
+      if (container)
+        container.innerHTML =
+          '<div class="p-10 text-center text-gray-500 dark:text-gray-400">未找到相关歌曲</div>'
+      if (loadMore) loadMore.style.display = "none"
+      return
+    }
+
+    // 保存全局搜索结果
+    searchResults = songs
+
+    // 渲染列表
+    if (container) {
+      container.innerHTML = ""
+      songs.forEach((song, idx) => {
+        if (!song.id) return
+        const isLiked = likedSongs.some((item) => item.id === song.id)
+        const artist =
+          song.ar && song.ar.length > 0 ? song.ar[0].name : "未知艺术家"
+        const album = song.al && song.al.name ? song.al.name : "未知专辑"
+        const li = document.createElement("li")
+        li.className = "song-item p-4 transition-colors duration-200"
+        li.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex-1 min-w-0">
+              <h3 class="font-medium dark:text-white truncate">${song.name}</h3>
+              <p class="text-sm text-gray-400 dark:text-gray-500 truncate">${artist} - ${album}</p>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button class="like-btn ${isLiked ? "text-red-500" : "text-gray-400 dark:text-gray-500"} hover:text-red-500 transition-colors" data-song-id="${song.id}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="${isLiked ? "currentColor" : "none"}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+              </button>
+              <button class="add-to-playlist" data-song-id="${song.id}">+</button>
+              <button class="more-btn" data-song-id="${song.id}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+              </button>
+            </div>
+          </div>
+        `
+        const globalIndex = searchResults.length - songs.length + idx
+        li.dataset.index = globalIndex
+        li.dataset.list = "search"
+        let lastClickTime = 0
+        li.addEventListener("click", (e) => {
+          const now = Date.now()
+          if (now - lastClickTime < 300) {
+            playSelectedSong(song, "search")
+            lastClickTime = 0
+          } else {
+            lastClickTime = now
+            selectSong(song, globalIndex, "search")
+          }
+        })
+        li.addEventListener("contextmenu", (e) => {
+          e.preventDefault()
+          showSongContextMenu(e, song)
+        })
+        container.appendChild(li)
+      })
+    }
+
+    if (loadMore)
+      loadMore.style.display = songs.length >= PAGE_SIZE ? "block" : "none"
+    if (resultsSection) {
+      resultsSection.classList.remove("fade-in")
+      void resultsSection.offsetWidth
+      resultsSection.classList.add("fade-in")
+    }
+    await updateSearchHistory(keyword)
+  } catch (err) {
+    console.error("搜索失败", err)
+    const container = document.getElementById("searchResultList")
+    if (container)
+      container.innerHTML =
+        '<div class="p-10 text-center text-red-500 dark:text-red-400">搜索失败，请稍后重试</div>'
+    const loadMore = document.getElementById("loadMoreBtn")
+    if (loadMore) loadMore.style.display = "none"
+  } finally {
+    isSearching = false
+  }
+}
 
   function removeFromPlaylist(index) {
     const song = playQueue[index]
@@ -1371,7 +1802,7 @@
       latestPlayed.splice(index, 1)
       if (recentCount) recentCount.textContent = latestPlayed.length
       try {
-        await window.ElectronAPI.saveLatestPlayed(latestPlayed)
+        await api.saveLatestPlayed(latestPlayed)
         showToast(`已从最近播放中移除《${song.name}》`)
       } catch (err) {
         console.error("保存最近播放失败:", err)
@@ -1570,7 +2001,7 @@
       return
     }
     playlist.songs.push(song)
-    window.ElectronAPI.saveDIYPlaylists(diyPlaylists)
+    api.saveDIYPlaylists(diyPlaylists)
     if (currentPlaylist && currentPlaylist.id === playlist.id) {
       renderPlaylistDetail(playlist)
     }
@@ -1746,15 +2177,15 @@
         removeFromLatestPlayed(song)
         renderPlaylistDetail(currentPlaylist)
       } else if (currentPlaylist.id === "local") {
-        window.ElectronAPI.deleteLocalSong(song.url).then(async (result) => {
+        api.deleteLocalSong(song.url).then(async (result) => {
           if (result.success) {
-            localSongs = await window.ElectronAPI.readLocalSongs()
+            localSongs = await api.readLocalSongs()
             const localCountEl = document.getElementById("localCount")
             if (localCountEl) localCountEl.textContent = localSongs.length
             showLocalSongs()
             showToast(`已删除本地歌曲：${song.name}`)
           } else {
-            showToast(`删除失败：${result.error}`)
+            showToast(`删除失败：${result.message}`)
           }
         })
       } else if (currentPlaylist.id === "followed") {
@@ -1822,80 +2253,12 @@
 
   // ========== 搜索功能 ==========
   async function loadSearchResults(keyword, offset) {
-    if (offset === 0 && searchResultList) {
-      searchResultList.innerHTML = `<div class="p-10 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div><p class="mt-2 text-gray-600 dark:text-gray-400">搜索中...</p></div>`
-    }
-
-    const cacheKey = `${keyword}_${offset}`
-    let songs
-
-    if (searchCache.has(cacheKey)) {
-      songs = searchCache.get(cacheKey)
-    } else {
-      try {
-        songs = await window.ElectronAPI.searchMusic(keyword, offset)
-        if (songs && songs.length > 0) {
-          searchCache.set(cacheKey, songs)
-        }
-      } catch (err) {
-        console.error("[搜索] API请求失败：", err)
-        showToast("搜索失败，请查看日志")
-        if (offset === 0 && searchResultList) {
-          searchResultList.innerHTML =
-            '<div class="p-10 text-center text-red-500 dark:text-red-400">搜索失败，请稍后重试</div>'
-          if (loadMoreBtn) loadMoreBtn.style.display = "none"
-        }
-        return
-      }
-    }
-
-    if (songs && songs.length > 0) {
-      if (offset === 0) {
-        searchResults = songs
-        renderSearchResults(songs, offset)
-        if (searchResultsSection) {
-          searchResultsSection.classList.remove("fade-in")
-          void searchResultsSection.offsetWidth
-          searchResultsSection.classList.add("fade-in")
-        }
-      } else {
-        searchResults = [...searchResults, ...songs]
-        renderSearchResults(songs, offset)
-      }
-    } else if (offset === 0) {
-      if (searchResultList)
-        searchResultList.innerHTML =
-          '<div class="p-10 text-center text-gray-500 dark:text-gray-400">未找到相关歌曲</div>'
-      if (loadMoreBtn) loadMoreBtn.style.display = "none"
-    }
+    // 直接调用 unifiedSearch，忽略 offset（因为目前只支持 offset=0）
+    await unifiedSearch(keyword)
   }
 
   async function performSearch(keyword) {
-    if (!keyword || isSearching) return
-    isSearching = true
-    try {
-      searchOffset = 0
-      if (searchResultsSection) searchResultsSection.classList.remove("hidden")
-      if (playlistDetailSection) playlistDetailSection.classList.add("hidden")
-      if (backToSearchBtn) backToSearchBtn.classList.add("hidden")
-      // 设置标题为"搜索结果"
-      const titleElement = document.querySelector("#searchResultsSection h2")
-      if (titleElement) titleElement.textContent = "搜索结果"
-      // 显示加载动画
-      if (searchResultList)
-        searchResultList.innerHTML =
-          '<div class="p-10 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div><p class="mt-2 text-gray-600 dark:text-gray-400">搜索中...</p></div>'
-      await loadSearchResults(keyword, searchOffset)
-      await updateSearchHistory(keyword)
-      initSearchState()
-      if (searchResultsSection) {
-        searchResultsSection.classList.remove("fade-in")
-        void searchResultsSection.offsetWidth
-        searchResultsSection.classList.add("fade-in")
-      }
-    } finally {
-      isSearching = false
-    }
+    await unifiedSearch(keyword)
   }
 
   // ========== 音频事件监听 ==========
@@ -2003,7 +2366,7 @@
     )
     if (importPlaylistBtnModal) {
       importPlaylistBtnModal.addEventListener("click", async () => {
-        const result = await window.ElectronAPI.importPlaylist()
+        const result = await api.importPlaylist()
         if (result.success) {
           diyPlaylists = result.playlists
           renderPlaylistSidebar()
@@ -2065,7 +2428,7 @@
           let coverPath = targetPlaylist.coverPath
 
           if (currentCover && currentCover !== targetPlaylist.coverPath) {
-            const result = await window.ElectronAPI.savePlaylistCover({
+            const result = await api.savePlaylistCover({
               playlistId: targetPlaylist.id,
               coverData: currentCover,
             })
@@ -2081,8 +2444,7 @@
           if (coverPath) targetPlaylist.coverPath = coverPath
 
           try {
-            const saveResult =
-              await window.ElectronAPI.saveDIYPlaylists(diyPlaylists)
+            const saveResult = await api.saveDIYPlaylists(diyPlaylists)
             if (!saveResult) {
               showToast("保存失败，请检查日志")
               return
@@ -2103,7 +2465,7 @@
           let coverPath = ""
 
           if (currentCover) {
-            const result = await window.ElectronAPI.savePlaylistCover({
+            const result = await api.savePlaylistCover({
               playlistId,
               coverData: currentCover,
             })
@@ -2125,8 +2487,7 @@
 
           diyPlaylists.push(newPlaylist)
           try {
-            const saveResult =
-              await window.ElectronAPI.saveDIYPlaylists(diyPlaylists)
+            const saveResult = await api.saveDIYPlaylists(diyPlaylists)
             if (!saveResult) {
               showToast("保存失败，请检查日志")
               return
@@ -2143,31 +2504,46 @@
     }
 
     // 功能按钮
-    if (likeSongsBtn) likeSongsBtn.addEventListener("click", showLikedSongs)
-    if (recentPlayBtn) recentPlayBtn.addEventListener("click", showRecentSongs)
+    if (likeSongsBtn)
+      likeSongsBtn.addEventListener("click", () => {
+        showLikedSongs()
+        setActiveBottomNav("liked")
+      })
+    if (recentPlayBtn)
+      recentPlayBtn.addEventListener("click", () => {
+        showRecentSongs()
+        setActiveBottomNav("recent")
+      })
 
     const localSongsBtn = document.getElementById("localSongsBtn")
-    if (localSongsBtn) localSongsBtn.addEventListener("click", showLocalSongs)
+    if (localSongsBtn)
+      localSongsBtn.addEventListener("click", () => {
+        showLocalSongs()
+        setActiveBottomNav("local")
+      })
 
     const followedSongsBtn = document.getElementById("followedSongsBtn")
     if (followedSongsBtn)
-      followedSongsBtn.addEventListener("click", showFollowedArtists)
+      followedSongsBtn.addEventListener("click", () => {
+        showFollowedArtists()
+        setActiveBottomNav("followed")
+      })
 
     // 导入本地歌曲
     const importLocalBtn = document.getElementById("importLocalBtn")
     if (importLocalBtn) {
       importLocalBtn.addEventListener("click", async () => {
-        const filePaths = await window.ElectronAPI.openFileDialog()
+        const filePaths = await api.openFileDialog()
         if (filePaths && filePaths.length > 0) {
-          const result = await window.ElectronAPI.importLocalSongs(filePaths)
+          const result = await api.importLocalSongs(filePaths)
           if (result.success) {
-            localSongs = await window.ElectronAPI.readLocalSongs()
+            localSongs = await api.readLocalSongs()
             const localCountEl = document.getElementById("localCount")
             if (localCountEl) localCountEl.textContent = localSongs.length
             showLocalSongs()
             showToast(`成功导入 ${result.songs.length} 首本地歌曲`)
           } else {
-            showToast(`导入失败：${result.error}`)
+            showToast(`导入失败：${result.message}`)
           }
         }
       })
@@ -2280,17 +2656,108 @@
     }
 
     if (searchBtn) {
-      searchBtn.addEventListener("click", () => {
-        const keyword = searchInput ? searchInput.value.trim() : ""
-        performSearch(keyword)
-      })
+  searchBtn.addEventListener("click", async () => {
+    const keyword = searchInput ? searchInput.value.trim() : "";
+    if (!keyword) return;
+
+    // 显示加载动画
+    if (searchResultList) {
+      searchResultList.innerHTML = `<div class="p-10 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div><p class="mt-2 text-gray-600 dark:text-gray-400">搜索中...</p></div>`;
     }
+    if (searchResultsSection) searchResultsSection.classList.remove("hidden");
+    if (playlistDetailSection) playlistDetailSection.classList.add("hidden");
+    if (backToSearchBtn) backToSearchBtn.classList.add("hidden");
+
+    try {
+      const url = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=0&limit=20`;
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          Referer: "https://music.163.com/",
+          Origin: "https://music.163.com/",
+        },
+      });
+      const data = await response.json();
+      const songs = data.result?.songs || [];
+
+      if (songs.length === 0) {
+        if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-gray-500 dark:text-gray-400">未找到相关歌曲</div>';
+        if (loadMoreBtn) loadMoreBtn.style.display = "none";
+        return;
+      }
+
+      // 保存全局搜索结果
+      searchResults = songs;
+
+      // 渲染列表
+      if (searchResultList) {
+        searchResultList.innerHTML = "";
+        songs.forEach((song, idx) => {
+          if (!song.id) return;
+          const isLiked = likedSongs.some(item => item.id === song.id);
+          const artist = song.ar && song.ar.length > 0 ? song.ar[0].name : "未知艺术家";
+          const album = song.al && song.al.name ? song.al.name : "未知专辑";
+          const li = document.createElement("li");
+          li.className = "song-item p-4 transition-colors duration-200";
+          li.innerHTML = `
+            <div class="flex items-center justify-between">
+              <div class="flex-1 min-w-0">
+                <h3 class="font-medium dark:text-white truncate">${song.name}</h3>
+                <p class="text-sm text-gray-400 dark:text-gray-500 truncate">${artist} - ${album}</p>
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <button class="like-btn ${isLiked ? "text-red-500" : "text-gray-400 dark:text-gray-500"} hover:text-red-500 transition-colors" data-song-id="${song.id}">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="${isLiked ? "currentColor" : "none"}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                </button>
+                <button class="add-to-playlist" data-song-id="${song.id}">+</button>
+                <button class="more-btn" data-song-id="${song.id}">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+                </button>
+              </div>
+            </div>
+          `;
+          const globalIndex = searchResults.length - songs.length + idx;
+          li.dataset.index = globalIndex;
+          li.dataset.list = "search";
+          let lastClickTime = 0;
+          li.addEventListener("click", (e) => {
+            const now = Date.now();
+            if (now - lastClickTime < 300) {
+              playSelectedSong(song, "search");
+              lastClickTime = 0;
+            } else {
+              lastClickTime = now;
+              selectSong(song, globalIndex, "search");
+            }
+          });
+          li.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            showSongContextMenu(e, song);
+          });
+          searchResultList.appendChild(li);
+        });
+      }
+
+      if (loadMoreBtn) loadMoreBtn.style.display = songs.length >= PAGE_SIZE ? "block" : "none";
+      if (searchResultsSection) {
+        searchResultsSection.classList.remove("fade-in");
+        void searchResultsSection.offsetWidth;
+        searchResultsSection.classList.add("fade-in");
+      }
+      await updateSearchHistory(keyword);
+    } catch (err) {
+      console.error("搜索失败", err);
+      if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-red-500 dark:text-red-400">搜索失败，请稍后重试</div>';
+      if (loadMoreBtn) loadMoreBtn.style.display = "none";
+    }
+  });
+}
 
     if (searchInput) {
       searchInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") {
           const keyword = searchInput.value.trim()
-          performSearch(keyword)
+          unifiedSearch(keyword)
         }
       })
     }
@@ -2320,8 +2787,41 @@
     setupAudioListeners()
     setupSidebarResize()
 
+    // 绑定底部导航栏事件
+    bindBottomNavEvents()
+
+    // 绑定菜单按钮事件
+    bindMenuBtnEvents()
+
+    // 绑定侧边栏点击事件，防止点击侧边栏内容时关闭侧边栏
+    const sidebar = document.getElementById("sidebar")
+    if (sidebar) {
+      sidebar.addEventListener("click", (e) => {
+        e.stopPropagation()
+      })
+    }
+
+    // 确保侧边栏关闭时隐藏遮罩层
+    const sidebarOverlay = document.getElementById("sidebarOverlay")
+    if (sidebarOverlay) {
+      // 监听侧边栏的类变化
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.attributeName === "class") {
+            if (!sidebar.classList.contains("show")) {
+              sidebarOverlay.classList.add("hidden")
+            }
+          }
+        })
+      })
+
+      if (sidebar) {
+        observer.observe(sidebar, { attributes: true })
+      }
+    }
+
     try {
-      const savedPlaylist = await window.ElectronAPI.readPlaylist()
+      const savedPlaylist = await api.readPlaylist()
       if (savedPlaylist && savedPlaylist.length > 0) {
         playQueue = savedPlaylist
         renderPlaylist()
@@ -2331,7 +2831,7 @@
     }
 
     try {
-      likedSongs = (await window.ElectronAPI.readLikedSongs()) || []
+      likedSongs = (await api.readLikedSongs()) || []
       if (likeCount) likeCount.textContent = likedSongs.length
     } catch (err) {
       console.error("读取我喜欢的歌曲失败:", err)
@@ -2339,7 +2839,7 @@
     }
 
     try {
-      followedArtists = (await window.ElectronAPI.readFollowedArtists()) || []
+      followedArtists = (await api.readFollowedArtists()) || []
       const followCountEl = document.getElementById("followCount")
       if (followCountEl) followCountEl.textContent = followedArtists.length
     } catch (err) {
@@ -2348,7 +2848,7 @@
     }
 
     try {
-      customPlaylists = (await window.ElectronAPI.readCustomPlaylists()) || []
+      customPlaylists = (await api.readCustomPlaylists()) || []
       renderPlaylistSidebar()
     } catch (err) {
       console.error("读取自定义歌单失败:", err)
@@ -2356,7 +2856,7 @@
     }
 
     try {
-      latestPlayed = (await window.ElectronAPI.readLatestPlayed()) || []
+      latestPlayed = (await api.readLatestPlayed()) || []
       if (recentCount) recentCount.textContent = latestPlayed.length
     } catch (err) {
       console.error("读取最近播放失败:", err)
@@ -2364,7 +2864,7 @@
     }
 
     try {
-      diyPlaylists = (await window.ElectronAPI.readDIYPlaylists()) || []
+      diyPlaylists = (await api.readDIYPlaylists()) || []
       renderPlaylistSidebar()
     } catch (err) {
       console.error("读取自建歌单失败:", err)
@@ -2372,14 +2872,14 @@
     }
 
     try {
-      searchHistory = (await window.ElectronAPI.readSearchHistory()) || []
+      searchHistory = (await api.readSearchHistory()) || []
     } catch (err) {
       console.error("读取搜索历史失败:", err)
       searchHistory = []
     }
 
     try {
-      localSongs = (await window.ElectronAPI.readLocalSongs()) || []
+      localSongs = (await api.readLocalSongs()) || []
       const localCountEl = document.getElementById("localCount")
       if (localCountEl) localCountEl.textContent = localSongs.length
     } catch (err) {
@@ -2389,7 +2889,7 @@
 
     async function checkUpdateOnStartup() {
       try {
-        const result = await window.ElectronAPI.checkForUpdates()
+        const result = await api.checkForUpdates()
         if (result && result.success && result.hasUpdate) {
           showUpdateBadge()
         }
@@ -2403,6 +2903,182 @@
     if (searchInput && searchInput.value.trim() !== "") {
       if (clearSearchBtn) clearSearchBtn.classList.remove("hidden")
     }
+  }
+
+  // ========== 绑定底部导航栏事件 ==========
+  function bindBottomNavEvents() {
+    // 首页按钮
+    const bottomHomeBtn = document.getElementById("bottomHomeBtn")
+    if (bottomHomeBtn) {
+      bottomHomeBtn.addEventListener("click", () => {
+        // 移除所有底部导航按钮的激活状态
+        resetBottomNavActive()
+        // 添加当前按钮的激活状态
+        bottomHomeBtn.classList.add("active")
+        // 显示最近播放页面
+        showRecentSongs()
+      })
+    }
+
+    // 搜索按钮
+    const bottomSearchBtn = document.getElementById("bottomSearchBtn")
+    if (bottomSearchBtn) {
+      bottomSearchBtn.addEventListener("click", () => {
+        // 移除所有底部导航按钮的激活状态
+        resetBottomNavActive()
+        // 添加当前按钮的激活状态
+        bottomSearchBtn.classList.add("active")
+        // 显示搜索界面
+        showSearchUI()
+      })
+    }
+
+    // 我的按钮
+    const bottomLibraryBtn = document.getElementById("bottomLibraryBtn")
+    if (bottomLibraryBtn) {
+      bottomLibraryBtn.addEventListener("click", () => {
+        // 移除所有底部导航按钮的激活状态
+        resetBottomNavActive()
+        // 添加当前按钮的激活状态
+        bottomLibraryBtn.classList.add("active")
+        // 显示我喜欢的歌曲页面
+        showLikedSongs()
+      })
+    }
+  }
+
+  // 重置底部导航栏激活状态
+  function resetBottomNavActive() {
+    const bottomNavButtons = [
+      document.getElementById("bottomHomeBtn"),
+      document.getElementById("bottomSearchBtn"),
+      document.getElementById("bottomLibraryBtn"),
+    ]
+    bottomNavButtons.forEach((btn) => {
+      if (btn) {
+        btn.classList.remove("active")
+      }
+    })
+  }
+
+  // 设置底部导航栏激活状态
+  function setActiveBottomNav(type) {
+    resetBottomNavActive()
+    switch (type) {
+      case "recent":
+      case "followed":
+        // 激活首页按钮
+        const bottomHomeBtn = document.getElementById("bottomHomeBtn")
+        if (bottomHomeBtn) {
+          bottomHomeBtn.classList.add("active")
+        }
+        break
+      case "liked":
+      case "local":
+        // 激活我的按钮
+        const bottomLibraryBtn = document.getElementById("bottomLibraryBtn")
+        if (bottomLibraryBtn) {
+          bottomLibraryBtn.classList.add("active")
+        }
+        break
+      case "search":
+        // 激活搜索按钮
+        const bottomSearchBtn = document.getElementById("bottomSearchBtn")
+        if (bottomSearchBtn) {
+          bottomSearchBtn.classList.add("active")
+        }
+        break
+    }
+  }
+
+  // ========== 绑定菜单按钮事件 ==========
+  function bindMenuBtnEvents() {
+    const menuBtn = document.getElementById("menuBtn")
+    const sidebar = document.getElementById("sidebar")
+    const sidebarOverlay = document.getElementById("sidebarOverlay")
+
+    if (menuBtn) {
+      menuBtn.addEventListener("click", () => {
+        if (sidebar) {
+          sidebar.classList.toggle("show")
+          if (sidebarOverlay) {
+            sidebarOverlay.classList.toggle("hidden")
+          }
+        }
+      })
+    }
+
+    if (sidebarOverlay) {
+      sidebarOverlay.addEventListener("click", () => {
+        if (sidebar) {
+          sidebar.classList.remove("show")
+          sidebarOverlay.classList.add("hidden")
+        }
+      })
+    }
+  }
+
+  // ========== 关闭侧边栏 ==========
+  function closeSidebar() {
+    const sidebar = document.getElementById("sidebar")
+    const sidebarOverlay = document.getElementById("sidebarOverlay")
+    if (sidebar) {
+      sidebar.classList.remove("show")
+    }
+    if (sidebarOverlay) {
+      sidebarOverlay.classList.add("hidden")
+    }
+  }
+
+  // ========== 显示搜索界面 ==========
+  function showSearchUI() {
+    // 关闭侧边栏
+    closeSidebar()
+
+    // 显示搜索输入框
+    const searchInput = document.getElementById("searchInput")
+    if (searchInput) {
+      // 清空搜索输入框
+      searchInput.value = ""
+      searchInput.focus()
+    }
+
+    // 清空搜索结果
+    const searchResultList = document.getElementById("searchResultList")
+    if (searchResultList) {
+      searchResultList.innerHTML = ""
+    }
+
+    // 隐藏加载更多按钮
+    const loadMoreBtn = document.getElementById("loadMoreBtn")
+    if (loadMoreBtn) {
+      loadMoreBtn.style.display = "none"
+    }
+
+    // 隐藏歌单详情区域
+    const playlistDetailSection = document.getElementById(
+      "playlistDetailSection"
+    )
+    if (playlistDetailSection) {
+      playlistDetailSection.style.display = "none"
+    }
+
+    // 隐藏其他内容，显示搜索相关内容
+    const sections = document.querySelectorAll("section")
+    sections.forEach((section) => {
+      if (section.id !== "searchSection") {
+        section.style.display = "none"
+      } else {
+        section.style.display = "block"
+      }
+    })
+
+    // 重置搜索状态
+    searchOffset = 0
+    hasMoreResults = true
+
+    // 激活底部导航栏的搜索按钮
+    setActiveBottomNav("search")
   }
 
   // 启动应用
