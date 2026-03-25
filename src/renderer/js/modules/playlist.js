@@ -1,37 +1,37 @@
-import store from '../store/index.js'
-import api from '../services/api.js'
-import storageAdapter from '../services/storageAdapter.js'
+import store from "../store/index.js"
+import api from "../services/api.js"
+import storageAdapter from "../services/storageAdapter.js"
 
 class Playlist {
   // 添加歌曲到播放队列
   addToPlaylist(song) {
-    store.dispatch('addToPlayQueue', song)
+    store.dispatch("addToPlayQueue", song)
     this.savePlaylist()
   }
 
   // 批量添加歌曲到播放队列
   addMultipleToPlaylist(songs) {
-    songs.forEach(song => {
-      store.dispatch('addToPlayQueue', song)
+    songs.forEach((song) => {
+      store.dispatch("addToPlayQueue", song)
     })
     this.savePlaylist()
   }
 
   // 从播放队列移除歌曲
   removeFromPlaylist(index) {
-    store.dispatch('removeFromPlayQueue', index)
+    store.dispatch("removeFromPlayQueue", index)
     this.savePlaylist()
   }
 
   // 清空播放队列
   clearPlaylist() {
-    store.dispatch('clearPlayQueue')
+    store.dispatch("clearPlayQueue")
     this.savePlaylist()
   }
 
   // 设置播放队列
   setPlaylist(queue) {
-    store.dispatch('setPlayQueue', queue)
+    store.dispatch("setPlayQueue", queue)
     this.savePlaylist()
   }
 
@@ -45,9 +45,9 @@ class Playlist {
   async loadPlaylist() {
     try {
       const playlist = await api.readPlaylist()
-      store.dispatch('setPlayQueue', playlist)
+      store.dispatch("setPlayQueue", playlist)
     } catch (error) {
-      console.error('加载播放队列失败:', error)
+      console.error("加载播放队列失败:", error)
     }
   }
 
@@ -55,9 +55,9 @@ class Playlist {
   playPlaylist() {
     const state = store.getState()
     if (state.playQueue.length > 0) {
-      store.dispatch('setCurrentSongIndex', 0)
+      store.dispatch("setCurrentSongIndex", 0)
       // 触发播放逻辑
-      if (typeof window.playCurrentSong === 'function') {
+      if (typeof window.playCurrentSong === "function") {
         window.playCurrentSong()
       }
     }
@@ -89,8 +89,8 @@ class Playlist {
   reorderPlaylist(newOrder) {
     const state = store.getState()
     const { playQueue } = state
-    const newQueue = newOrder.map(index => playQueue[index])
-    store.dispatch('setPlayQueue', newQueue)
+    const newQueue = newOrder.map((index) => playQueue[index])
+    store.dispatch("setPlayQueue", newQueue)
     this.savePlaylist()
   }
 
@@ -98,22 +98,22 @@ class Playlist {
   shufflePlaylist() {
     const state = store.getState()
     const { playQueue } = state
-    
+
     // 使用Fisher-Yates算法打乱
     const shuffled = [...playQueue]
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
       ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
     }
-    
-    store.dispatch('setPlayQueue', shuffled)
+
+    store.dispatch("setPlayQueue", shuffled)
     this.savePlaylist()
   }
 
   // 检查歌曲是否在播放队列中
   isSongInPlaylist(songId) {
     const state = store.getState()
-    return state.playQueue.some(song => song.id === songId)
+    return state.playQueue.some((song) => song.id === songId)
   }
 
   // 获取播放队列长度

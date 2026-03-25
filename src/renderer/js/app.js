@@ -52,49 +52,49 @@
 
     // 获取歌词
     fetchLyrics: async function (songId) {
-  try {
-    const lyricUrl = `https://api.qijieya.cn/meting/?server=netease&type=lrc&id=${songId}`;
-    const response = await fetch(lyricUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-      },
-    });
+      try {
+        const lyricUrl = `https://api.qijieya.cn/meting/?server=netease&type=lrc&id=${songId}`
+        const response = await fetch(lyricUrl, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          },
+        })
 
-    let text;
-    if (!response.ok) {
-      // 尝试使用 CORS 代理
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(lyricUrl)}`;
-      const proxyResponse = await fetch(proxyUrl);
-      if (!proxyResponse.ok) {
-        throw new Error(`获取歌词失败，状态码：${proxyResponse.status}`);
-      }
-      text = await proxyResponse.text();
-    } else {
-      text = await response.text();
-    }
+        let text
+        if (!response.ok) {
+          // 尝试使用 CORS 代理
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(lyricUrl)}`
+          const proxyResponse = await fetch(proxyUrl)
+          if (!proxyResponse.ok) {
+            throw new Error(`获取歌词失败，状态码：${proxyResponse.status}`)
+          }
+          text = await proxyResponse.text()
+        } else {
+          text = await response.text()
+        }
 
-    // 尝试解析 JSON（有些 API 可能返回 JSON 对象）
-    try {
-      const json = JSON.parse(text);
-      // 如果解析成功，提取 lrc 字段（兼容不同结构）
-      if (typeof json === 'object') {
-        return {
-          lrc: json.lrc || (typeof json === 'string' ? json : ''),
-          tlrc: json.tlrc || ''
-        };
-      } else {
-        return { lrc: text, tlrc: '' };
+        // 尝试解析 JSON（有些 API 可能返回 JSON 对象）
+        try {
+          const json = JSON.parse(text)
+          // 如果解析成功，提取 lrc 字段（兼容不同结构）
+          if (typeof json === "object") {
+            return {
+              lrc: json.lrc || (typeof json === "string" ? json : ""),
+              tlrc: json.tlrc || "",
+            }
+          } else {
+            return { lrc: text, tlrc: "" }
+          }
+        } catch (e) {
+          // 纯文本歌词，直接返回
+          return { lrc: text, tlrc: "" }
+        }
+      } catch (error) {
+        console.error("获取歌词失败:", error)
+        return null
       }
-    } catch (e) {
-      // 纯文本歌词，直接返回
-      return { lrc: text, tlrc: '' };
-    }
-  } catch (error) {
-    console.error("获取歌词失败:", error);
-    return null;
-  }
-},
+    },
 
     // 读取我喜欢的歌曲
     readLikedSongs: async function () {
@@ -716,7 +716,6 @@
   function renderPlaylistSidebar() {
     if (!playlistSidebarList) return
     playlistSidebarList.innerHTML = ""
-
     diyPlaylists.forEach((playlist, index) => {
       const li = document.createElement("li")
       li.className =
@@ -726,14 +725,85 @@
         playlist.songs.length > 0 &&
         playlist.songs[0].coverUrl &&
         playlist.songs[0].coverUrl !== ""
-
       li.innerHTML = `
         ${hasCover ? `<img src="./DIYSongListPage/${playlist.coverPath}" class="w-8 h-8 rounded object-cover" />` : hasSongCover ? `<img src="${playlist.songs[0].coverUrl}" class="w-8 h-8 rounded object-cover" />` : `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>`}
         <span class="flex-1">${playlist.name}</span>
         <span class="text-xs text-gray-400">${playlist.songs.length}</span>
       `
       li.dataset.index = index
-      li.addEventListener("click", () => showPlaylistDetail(playlist))
+
+      // 单击/双击逻辑
+      let clickTimer = null
+      li.addEventListener("click", (e) => {
+        if (clickTimer) {
+          clearTimeout(clickTimer)
+          clickTimer = null
+          // 双击：进入歌单详情
+          showPlaylistDetail(playlist)
+        } else {
+          clickTimer = setTimeout(() => {
+            clickTimer = null
+            // 单击：显示所有自建歌单列表（复用搜索结果区域）
+            if (searchResultsSection)
+              searchResultsSection.classList.remove("hidden")
+            if (playlistDetailSection)
+              playlistDetailSection.classList.add("hidden")
+            const sectionTitle = document.querySelector(
+              "#searchResultsSection h2"
+            )
+            if (sectionTitle) sectionTitle.textContent = "自定义歌单"
+            if (loadMoreBtn) loadMoreBtn.style.display = "none"
+            if (backToSearchBtn) backToSearchBtn.classList.remove("hidden")
+            if (searchResultList) {
+              searchResultList.innerHTML = ""
+              if (diyPlaylists.length === 0) {
+                searchResultList.innerHTML =
+                  '<div class="p-8 text-center text-gray-500 dark:text-gray-400">暂无自定义歌单，点击侧边栏“+”创建</div>'
+                return
+              }
+              diyPlaylists.forEach((pl) => {
+                const firstSongCover =
+                  pl.songs.length && pl.songs[0].coverUrl
+                    ? pl.songs[0].coverUrl
+                    : ""
+                const liItem = document.createElement("li")
+                liItem.className =
+                  "playlist-item p-4 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 cursor-pointer"
+                liItem.innerHTML = `
+                  <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                      ${
+                        pl.coverPath
+                          ? `<img src="./DIYSongListPage/${pl.coverPath}" class="w-full h-full object-cover">`
+                          : firstSongCover
+                            ? `<img src="${firstSongCover}" class="w-full h-full object-cover">`
+                            : `<svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>`
+                      }
+                    </div>
+                    <div class="flex-1">
+                      <div class="font-medium dark:text-white">${escapeHtml(pl.name)}</div>
+                      <div class="text-xs text-gray-400">${pl.songs.length}首歌曲</div>
+                    </div>
+                    <div class="text-gray-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    </div>
+                  </div>
+                `
+                liItem.addEventListener("dblclick", (e) => {
+                  e.stopPropagation()
+                  showPlaylistDetail(pl)
+                })
+                liItem.addEventListener("contextmenu", (e) => {
+                  e.preventDefault()
+                  showPlaylistContextMenu(e, pl)
+                })
+                searchResultList.appendChild(liItem)
+              })
+            }
+          }, 200)
+        }
+      })
+
       li.addEventListener("contextmenu", (e) => {
         e.preventDefault()
         showPlaylistContextMenu(e, playlist)
@@ -1127,6 +1197,8 @@
   }
 
   function showPlaylistDetail(playlist) {
+    if (searchResultsSection) searchResultsSection.classList.add("hidden")
+    if (playlistDetailSection) playlistDetailSection.classList.remove("hidden")
     currentPlaylist = playlist
     if (backToSearchBtn) backToSearchBtn.classList.remove("hidden")
 
@@ -1269,13 +1341,18 @@
     playlist.songs.forEach((song, index) => {
       if (!song.id) return
       const isLiked = likedSongs.some((item) => item.id === song.id)
+      const artist =
+        song.artist ||
+        (song.ar && song.ar.length > 0 ? song.ar[0].name : "未知艺术家")
+      const album =
+        song.album || (song.al && song.al.name ? song.al.name : "未知专辑")
       const li = document.createElement("li")
       li.className = "song-item p-4"
       li.innerHTML = `
         <div class="flex items-center justify-between">
           <div class="flex-1 min-w-0">
             <h3 class="font-medium dark:text-white truncate">${song.name}</h3>
-            <p class="text-xs text-gray-400 dark:text-gray-500 truncate">${song.artist} - ${song.album}</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 truncate">${artist} - ${album}</p>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
             <button class="like-btn ${isLiked ? "text-red-500" : "text-gray-400 dark:text-gray-500"} hover:text-red-500 transition-colors" data-song-id="${song.id}">
@@ -1627,8 +1704,10 @@
       if (!song.id) return
       const isLiked = likedSongs.some((item) => item.id === song.id)
       const artist =
-        song.ar && song.ar.length > 0 ? song.ar[0].name : "未知艺术家"
-      const album = song.al && song.al.name ? song.al.name : "未知专辑"
+        song.artist ||
+        (song.ar && song.ar.length > 0 ? song.ar[0].name : "未知艺术家")
+      const album =
+        song.album || (song.al && song.al.name ? song.al.name : "未知专辑")
       const li = document.createElement("li")
       li.className = "song-item p-4 transition-colors duration-200"
       li.innerHTML = `
@@ -1676,76 +1755,83 @@
   }
 
   // ========== 统一搜索函数 ==========
-async function unifiedSearch(keyword) {
-  if (!keyword || isSearching) return;
-  isSearching = true;
-  try {
-    // 显示加载动画
-    if (searchResultList) {
-      searchResultList.innerHTML = `<div class="p-10 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div><p class="mt-2 text-gray-600 dark:text-gray-400">搜索中...</p></div>`;
-    }
-    if (searchResultsSection) searchResultsSection.classList.remove("hidden");
-    if (playlistDetailSection) playlistDetailSection.classList.add("hidden");
-    if (backToSearchBtn) backToSearchBtn.classList.add("hidden");
-
-    const url = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=0&limit=20`;
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        Referer: "https://music.163.com/",
-        Origin: "https://music.163.com/",
-      },
-    });
-    const data = await response.json();
-    const rawSongs = data.result?.songs || [];
-
-    if (rawSongs.length === 0) {
-      if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-gray-500 dark:text-gray-400">未找到相关歌曲</div>';
-      if (loadMoreBtn) loadMoreBtn.style.display = "none";
-      return;
-    }
-
-    // 转换为包含播放地址的完整歌曲对象
-    const tracks = rawSongs.map(song => {
-      // 尝试使用 helpers 中的转换函数（如果存在）
-      if (window.helpers && window.helpers.mapNeteaseSongToTrack) {
-        return window.helpers.mapNeteaseSongToTrack(song);
-      } else {
-        // 降级手动构造
-        if (!song || !song.id) return null;
-        return {
-          id: song.id.toString(),
-          songId: song.id.toString(),
-          name: song.name?.trim() ?? "未知歌曲",
-          artist: (song.ar && song.ar[0]?.name) || "未知歌手",
-          album: song.al?.name?.trim() ?? "未知专辑",
-          coverUrl: song.al?.picUrl?.replace("http:", "https:") ?? "",
-          duration: song.dt ?? 0,
-          url: `https://api.qijieya.cn/meting/?type=url&id=${song.id}`
-        };
+  async function unifiedSearch(keyword) {
+    if (!keyword || isSearching) return
+    isSearching = true
+    try {
+      // 显示加载动画
+      if (searchResultList) {
+        searchResultList.innerHTML = `<div class="p-10 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div><p class="mt-2 text-gray-600 dark:text-gray-400">搜索中...</p></div>`
       }
-    }).filter(t => t !== null);
+      if (searchResultsSection) searchResultsSection.classList.remove("hidden")
+      if (playlistDetailSection) playlistDetailSection.classList.add("hidden")
+      if (backToSearchBtn) backToSearchBtn.classList.add("hidden")
 
-    if (tracks.length === 0) {
-      if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-gray-500 dark:text-gray-400">无法解析歌曲数据</div>';
-      if (loadMoreBtn) loadMoreBtn.style.display = "none";
-      return;
-    }
+      const url = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=0&limit=20`
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          Referer: "https://music.163.com/",
+          Origin: "https://music.163.com/",
+        },
+      })
+      const data = await response.json()
+      const rawSongs = data.result?.songs || []
 
-    // 保存全局搜索结果（使用转换后的 tracks）
-    searchResults = tracks;
+      if (rawSongs.length === 0) {
+        if (searchResultList)
+          searchResultList.innerHTML =
+            '<div class="p-10 text-center text-gray-500 dark:text-gray-400">未找到相关歌曲</div>'
+        if (loadMoreBtn) loadMoreBtn.style.display = "none"
+        return
+      }
 
-    // 渲染列表
-    if (searchResultList) {
-      searchResultList.innerHTML = "";
-      tracks.forEach((song, idx) => {
-        if (!song.id) return;
-        const isLiked = likedSongs.some(item => item.id === song.id);
-        const artist = song.artist || "未知艺术家";
-        const album = song.album || "未知专辑";
-        const li = document.createElement("li");
-        li.className = "song-item p-4 transition-colors duration-200";
-        li.innerHTML = `
+      // 转换为包含播放地址的完整歌曲对象
+      const tracks = rawSongs
+        .map((song) => {
+          // 尝试使用 helpers 中的转换函数（如果存在）
+          if (window.helpers && window.helpers.mapNeteaseSongToTrack) {
+            return window.helpers.mapNeteaseSongToTrack(song)
+          } else {
+            // 降级手动构造
+            if (!song || !song.id) return null
+            return {
+              id: song.id.toString(),
+              songId: song.id.toString(),
+              name: song.name?.trim() ?? "未知歌曲",
+              artist: (song.ar && song.ar[0]?.name) || "未知歌手",
+              album: song.al?.name?.trim() ?? "未知专辑",
+              coverUrl: song.al?.picUrl?.replace("http:", "https:") ?? "",
+              duration: song.dt ?? 0,
+              url: `https://api.qijieya.cn/meting/?type=url&id=${song.id}`,
+            }
+          }
+        })
+        .filter((t) => t !== null)
+
+      if (tracks.length === 0) {
+        if (searchResultList)
+          searchResultList.innerHTML =
+            '<div class="p-10 text-center text-gray-500 dark:text-gray-400">无法解析歌曲数据</div>'
+        if (loadMoreBtn) loadMoreBtn.style.display = "none"
+        return
+      }
+
+      // 保存全局搜索结果（使用转换后的 tracks）
+      searchResults = tracks
+
+      // 渲染列表
+      if (searchResultList) {
+        searchResultList.innerHTML = ""
+        tracks.forEach((song, idx) => {
+          if (!song.id) return
+          const isLiked = likedSongs.some((item) => item.id === song.id)
+          const artist = song.artist || "未知艺术家"
+          const album = song.album || "未知专辑"
+          const li = document.createElement("li")
+          li.className = "song-item p-4 transition-colors duration-200"
+          li.innerHTML = `
           <div class="flex items-center justify-between">
             <div class="flex-1 min-w-0">
               <h3 class="font-medium dark:text-white truncate">${song.name}</h3>
@@ -1761,44 +1847,48 @@ async function unifiedSearch(keyword) {
               </button>
             </div>
           </div>
-        `;
-        const globalIndex = searchResults.length - tracks.length + idx;
-        li.dataset.index = globalIndex;
-        li.dataset.list = "search";
-        let lastClickTime = 0;
-        li.addEventListener("click", (e) => {
-          const now = Date.now();
-          if (now - lastClickTime < 300) {
-            playSelectedSong(song, "search");
-            lastClickTime = 0;
-          } else {
-            lastClickTime = now;
-            selectSong(song, globalIndex, "search");
-          }
-        });
-        li.addEventListener("contextmenu", (e) => {
-          e.preventDefault();
-          showSongContextMenu(e, song);
-        });
-        searchResultList.appendChild(li);
-      });
-    }
+        `
+          const globalIndex = searchResults.length - tracks.length + idx
+          li.dataset.index = globalIndex
+          li.dataset.list = "search"
+          let lastClickTime = 0
+          li.addEventListener("click", (e) => {
+            const now = Date.now()
+            if (now - lastClickTime < 300) {
+              playSelectedSong(song, "search")
+              lastClickTime = 0
+            } else {
+              lastClickTime = now
+              selectSong(song, globalIndex, "search")
+            }
+          })
+          li.addEventListener("contextmenu", (e) => {
+            e.preventDefault()
+            showSongContextMenu(e, song)
+          })
+          searchResultList.appendChild(li)
+        })
+      }
 
-    if (loadMoreBtn) loadMoreBtn.style.display = tracks.length >= PAGE_SIZE ? "block" : "none";
-    if (searchResultsSection) {
-      searchResultsSection.classList.remove("fade-in");
-      void searchResultsSection.offsetWidth;
-      searchResultsSection.classList.add("fade-in");
+      if (loadMoreBtn)
+        loadMoreBtn.style.display =
+          tracks.length >= PAGE_SIZE ? "block" : "none"
+      if (searchResultsSection) {
+        searchResultsSection.classList.remove("fade-in")
+        void searchResultsSection.offsetWidth
+        searchResultsSection.classList.add("fade-in")
+      }
+      await updateSearchHistory(keyword)
+    } catch (err) {
+      console.error("搜索失败", err)
+      if (searchResultList)
+        searchResultList.innerHTML =
+          '<div class="p-10 text-center text-red-500 dark:text-red-400">搜索失败，请稍后重试</div>'
+      if (loadMoreBtn) loadMoreBtn.style.display = "none"
+    } finally {
+      isSearching = false
     }
-    await updateSearchHistory(keyword);
-  } catch (err) {
-    console.error("搜索失败", err);
-    if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-red-500 dark:text-red-400">搜索失败，请稍后重试</div>';
-    if (loadMoreBtn) loadMoreBtn.style.display = "none";
-  } finally {
-    isSearching = false;
   }
-}
 
   function removeFromPlaylist(index) {
     const song = playQueue[index]
@@ -1941,6 +2031,7 @@ async function unifiedSearch(keyword) {
       <button class="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 dark:text-white" id="addToLikedBtn">${isLiked ? "移除我喜欢" : "添加到我喜欢"}</button>
       <button class="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 dark:text-white" id="addToFollowedBtn">${isFollowed ? "取消关注歌手" : "关注歌手"}</button>
       <button class="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 dark:text-white" id="addToCurrentPlaylistBtn">添加到当前播放列表</button>
+      <button class="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 dark:text-white" id="downloadSongBtn">下载歌曲</button>
       <div class="border-t border-gray-300 my-1 dark:border-gray-700"></div>
       <div class="px-4 py-1 text-xs text-gray-400 dark:text-gray-500">添加到自定义歌单</div>
     `
@@ -2004,6 +2095,20 @@ async function unifiedSearch(keyword) {
     if (addToCurrentBtn) {
       addToCurrentBtn.addEventListener("click", () => {
         addToPlaylist(song)
+        document.body.removeChild(menu)
+      })
+    }
+
+    // 下载歌曲按钮
+    const downloadSongBtn = menu.querySelector("#downloadSongBtn")
+    if (downloadSongBtn) {
+      downloadSongBtn.addEventListener("click", async () => {
+        const result = await api.downloadSong(song)
+        if (result.success) {
+          showToast(result.message)
+        } else {
+          showToast(result.message, "error")
+        }
         document.body.removeChild(menu)
       })
     }
@@ -2681,112 +2786,112 @@ async function unifiedSearch(keyword) {
       })
     }
 
-//     if (searchBtn) {
-//   searchBtn.addEventListener("click", async () => {
-//     const keyword = searchInput ? searchInput.value.trim() : "";
-//     if (!keyword) return;
+    //     if (searchBtn) {
+    //   searchBtn.addEventListener("click", async () => {
+    //     const keyword = searchInput ? searchInput.value.trim() : "";
+    //     if (!keyword) return;
 
-//     // 显示加载动画
-//     if (searchResultList) {
-//       searchResultList.innerHTML = `<div class="p-10 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div><p class="mt-2 text-gray-600 dark:text-gray-400">搜索中...</p></div>`;
-//     }
-//     if (searchResultsSection) searchResultsSection.classList.remove("hidden");
-//     if (playlistDetailSection) playlistDetailSection.classList.add("hidden");
-//     if (backToSearchBtn) backToSearchBtn.classList.add("hidden");
+    //     // 显示加载动画
+    //     if (searchResultList) {
+    //       searchResultList.innerHTML = `<div class="p-10 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div><p class="mt-2 text-gray-600 dark:text-gray-400">搜索中...</p></div>`;
+    //     }
+    //     if (searchResultsSection) searchResultsSection.classList.remove("hidden");
+    //     if (playlistDetailSection) playlistDetailSection.classList.add("hidden");
+    //     if (backToSearchBtn) backToSearchBtn.classList.add("hidden");
 
-//     try {
-//       const url = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=0&limit=20`;
-//       const response = await fetch(url, {
-//         headers: {
-//           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-//           Referer: "https://music.163.com/",
-//           Origin: "https://music.163.com/",
-//         },
-//       });
-//       const data = await response.json();
-//       const songs = data.result?.songs || [];
+    //     try {
+    //       const url = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=0&limit=20`;
+    //       const response = await fetch(url, {
+    //         headers: {
+    //           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    //           Referer: "https://music.163.com/",
+    //           Origin: "https://music.163.com/",
+    //         },
+    //       });
+    //       const data = await response.json();
+    //       const songs = data.result?.songs || [];
 
-//       if (songs.length === 0) {
-//         if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-gray-500 dark:text-gray-400">未找到相关歌曲</div>';
-//         if (loadMoreBtn) loadMoreBtn.style.display = "none";
-//         return;
-//       }
+    //       if (songs.length === 0) {
+    //         if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-gray-500 dark:text-gray-400">未找到相关歌曲</div>';
+    //         if (loadMoreBtn) loadMoreBtn.style.display = "none";
+    //         return;
+    //       }
 
-//       // 保存全局搜索结果
-//       searchResults = songs;
+    //       // 保存全局搜索结果
+    //       searchResults = songs;
 
-//       // 渲染列表
-//       if (searchResultList) {
-//         searchResultList.innerHTML = "";
-//         songs.forEach((song, idx) => {
-//           if (!song.id) return;
-//           const isLiked = likedSongs.some(item => item.id === song.id);
-//           const artist = song.ar && song.ar.length > 0 ? song.ar[0].name : "未知艺术家";
-//           const album = song.al && song.al.name ? song.al.name : "未知专辑";
-//           const li = document.createElement("li");
-//           li.className = "song-item p-4 transition-colors duration-200";
-//           li.innerHTML = `
-//             <div class="flex items-center justify-between">
-//               <div class="flex-1 min-w-0">
-//                 <h3 class="font-medium dark:text-white truncate">${song.name}</h3>
-//                 <p class="text-sm text-gray-400 dark:text-gray-500 truncate">${artist} - ${album}</p>
-//               </div>
-//               <div class="flex items-center gap-2 flex-shrink-0">
-//                 <button class="like-btn ${isLiked ? "text-red-500" : "text-gray-400 dark:text-gray-500"} hover:text-red-500 transition-colors" data-song-id="${song.id}">
-//                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="${isLiked ? "currentColor" : "none"}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-//                 </button>
-//                 <button class="add-to-playlist" data-song-id="${song.id}">+</button>
-//                 <button class="more-btn" data-song-id="${song.id}">
-//                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
-//                 </button>
-//               </div>
-//             </div>
-//           `;
-//           const globalIndex = searchResults.length - songs.length + idx;
-//           li.dataset.index = globalIndex;
-//           li.dataset.list = "search";
-//           let lastClickTime = 0;
-//           li.addEventListener("click", (e) => {
-//             const now = Date.now();
-//             if (now - lastClickTime < 300) {
-//               playSelectedSong(song, "search");
-//               lastClickTime = 0;
-//             } else {
-//               lastClickTime = now;
-//               selectSong(song, globalIndex, "search");
-//             }
-//           });
-//           li.addEventListener("contextmenu", (e) => {
-//             e.preventDefault();
-//             showSongContextMenu(e, song);
-//           });
-//           searchResultList.appendChild(li);
-//         });
-//       }
+    //       // 渲染列表
+    //       if (searchResultList) {
+    //         searchResultList.innerHTML = "";
+    //         songs.forEach((song, idx) => {
+    //           if (!song.id) return;
+    //           const isLiked = likedSongs.some(item => item.id === song.id);
+    //           const artist = song.ar && song.ar.length > 0 ? song.ar[0].name : "未知艺术家";
+    //           const album = song.al && song.al.name ? song.al.name : "未知专辑";
+    //           const li = document.createElement("li");
+    //           li.className = "song-item p-4 transition-colors duration-200";
+    //           li.innerHTML = `
+    //             <div class="flex items-center justify-between">
+    //               <div class="flex-1 min-w-0">
+    //                 <h3 class="font-medium dark:text-white truncate">${song.name}</h3>
+    //                 <p class="text-sm text-gray-400 dark:text-gray-500 truncate">${artist} - ${album}</p>
+    //               </div>
+    //               <div class="flex items-center gap-2 flex-shrink-0">
+    //                 <button class="like-btn ${isLiked ? "text-red-500" : "text-gray-400 dark:text-gray-500"} hover:text-red-500 transition-colors" data-song-id="${song.id}">
+    //                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="${isLiked ? "currentColor" : "none"}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+    //                 </button>
+    //                 <button class="add-to-playlist" data-song-id="${song.id}">+</button>
+    //                 <button class="more-btn" data-song-id="${song.id}">
+    //                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+    //                 </button>
+    //               </div>
+    //             </div>
+    //           `;
+    //           const globalIndex = searchResults.length - songs.length + idx;
+    //           li.dataset.index = globalIndex;
+    //           li.dataset.list = "search";
+    //           let lastClickTime = 0;
+    //           li.addEventListener("click", (e) => {
+    //             const now = Date.now();
+    //             if (now - lastClickTime < 300) {
+    //               playSelectedSong(song, "search");
+    //               lastClickTime = 0;
+    //             } else {
+    //               lastClickTime = now;
+    //               selectSong(song, globalIndex, "search");
+    //             }
+    //           });
+    //           li.addEventListener("contextmenu", (e) => {
+    //             e.preventDefault();
+    //             showSongContextMenu(e, song);
+    //           });
+    //           searchResultList.appendChild(li);
+    //         });
+    //       }
 
-//       if (loadMoreBtn) loadMoreBtn.style.display = songs.length >= PAGE_SIZE ? "block" : "none";
-//       if (searchResultsSection) {
-//         searchResultsSection.classList.remove("fade-in");
-//         void searchResultsSection.offsetWidth;
-//         searchResultsSection.classList.add("fade-in");
-//       }
-//       await updateSearchHistory(keyword);
-//     } catch (err) {
-//       console.error("搜索失败", err);
-//       if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-red-500 dark:text-red-400">搜索失败，请稍后重试</div>';
-//       if (loadMoreBtn) loadMoreBtn.style.display = "none";
-//     }
-//   });
+    //       if (loadMoreBtn) loadMoreBtn.style.display = songs.length >= PAGE_SIZE ? "block" : "none";
+    //       if (searchResultsSection) {
+    //         searchResultsSection.classList.remove("fade-in");
+    //         void searchResultsSection.offsetWidth;
+    //         searchResultsSection.classList.add("fade-in");
+    //       }
+    //       await updateSearchHistory(keyword);
+    //     } catch (err) {
+    //       console.error("搜索失败", err);
+    //       if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-red-500 dark:text-red-400">搜索失败，请稍后重试</div>';
+    //       if (loadMoreBtn) loadMoreBtn.style.display = "none";
+    //     }
+    //   });
     // }
-    
+
     if (searchBtn) {
-  searchBtn.addEventListener("click", async () => {
-    const keyword = searchInput ? searchInput.value.trim() : "";
-    if (keyword) {
-      await unifiedSearch(keyword);
+      searchBtn.addEventListener("click", async () => {
+        const keyword = searchInput ? searchInput.value.trim() : ""
+        if (keyword) {
+          await unifiedSearch(keyword)
+        }
+      })
     }
-  });
-}
 
     if (searchInput) {
       searchInput.addEventListener("keypress", (e) => {
@@ -2824,36 +2929,6 @@ async function unifiedSearch(keyword) {
 
     // 绑定底部导航栏事件
     bindBottomNavEvents()
-
-    // 绑定菜单按钮事件
-    bindMenuBtnEvents()
-
-    // 绑定侧边栏点击事件，防止点击侧边栏内容时关闭侧边栏
-    const sidebar = document.getElementById("sidebar")
-    if (sidebar) {
-      sidebar.addEventListener("click", (e) => {
-        e.stopPropagation()
-      })
-    }
-
-    // 确保侧边栏关闭时隐藏遮罩层
-    const sidebarOverlay = document.getElementById("sidebarOverlay")
-    if (sidebarOverlay) {
-      // 监听侧边栏的类变化
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          if (mutation.attributeName === "class") {
-            if (!sidebar.classList.contains("show")) {
-              sidebarOverlay.classList.add("hidden")
-            }
-          }
-        })
-      })
-
-      if (sidebar) {
-        observer.observe(sidebar, { attributes: true })
-      }
-    }
 
     try {
       const savedPlaylist = await api.readPlaylist()
@@ -2942,42 +3017,106 @@ async function unifiedSearch(keyword) {
 
   // ========== 绑定底部导航栏事件 ==========
   function bindBottomNavEvents() {
-    // 首页按钮
     const bottomHomeBtn = document.getElementById("bottomHomeBtn")
+    const bottomFollowBtn = document.getElementById("bottomFollowBtn")
+    const bottomLikedBtn = document.getElementById("bottomLikedBtn")
+    const bottomRecentBtn = document.getElementById("bottomRecentBtn")
+    const bottomLocalBtn = document.getElementById("bottomLocalBtn")
+    const bottomPlaylistBtn = document.getElementById("bottomPlaylistBtn")
+
     if (bottomHomeBtn) {
       bottomHomeBtn.addEventListener("click", () => {
-        // 移除所有底部导航按钮的激活状态
         resetBottomNavActive()
-        // 添加当前按钮的激活状态
         bottomHomeBtn.classList.add("active")
-        // 显示最近播放页面
+        showSearchUI() // 显示搜索界面（首页）
+      })
+    }
+    if (bottomFollowBtn) {
+      bottomFollowBtn.addEventListener("click", () => {
+        resetBottomNavActive()
+        bottomFollowBtn.classList.add("active")
+        showFollowedArtists()
+      })
+    }
+    if (bottomLikedBtn) {
+      bottomLikedBtn.addEventListener("click", () => {
+        resetBottomNavActive()
+        bottomLikedBtn.classList.add("active")
+        showLikedSongs()
+      })
+    }
+    if (bottomRecentBtn) {
+      bottomRecentBtn.addEventListener("click", () => {
+        resetBottomNavActive()
+        bottomRecentBtn.classList.add("active")
         showRecentSongs()
       })
     }
-
-    // 搜索按钮
-    const bottomSearchBtn = document.getElementById("bottomSearchBtn")
-    if (bottomSearchBtn) {
-      bottomSearchBtn.addEventListener("click", () => {
-        // 移除所有底部导航按钮的激活状态
+    if (bottomLocalBtn) {
+      bottomLocalBtn.addEventListener("click", () => {
         resetBottomNavActive()
-        // 添加当前按钮的激活状态
-        bottomSearchBtn.classList.add("active")
-        // 显示搜索界面
-        showSearchUI()
+        bottomLocalBtn.classList.add("active")
+        showLocalSongs()
       })
     }
-
-    // 我的按钮
-    const bottomLibraryBtn = document.getElementById("bottomLibraryBtn")
-    if (bottomLibraryBtn) {
-      bottomLibraryBtn.addEventListener("click", () => {
-        // 移除所有底部导航按钮的激活状态
+    if (bottomPlaylistBtn) {
+      bottomPlaylistBtn.addEventListener("click", () => {
         resetBottomNavActive()
-        // 添加当前按钮的激活状态
-        bottomLibraryBtn.classList.add("active")
-        // 显示我喜欢的歌曲页面
-        showLikedSongs()
+        bottomPlaylistBtn.classList.add("active")
+        // 显示自定义歌单列表（复用搜索结果区域）
+        if (searchResultsSection)
+          searchResultsSection.classList.remove("hidden")
+        if (playlistDetailSection) playlistDetailSection.classList.add("hidden")
+        const sectionTitle = document.querySelector("#searchResultsSection h2")
+        if (sectionTitle) sectionTitle.textContent = "自定义歌单"
+        if (loadMoreBtn) loadMoreBtn.style.display = "none"
+        if (backToSearchBtn) backToSearchBtn.classList.remove("hidden")
+        if (searchResultList) {
+          searchResultList.innerHTML = ""
+          if (diyPlaylists.length === 0) {
+            searchResultList.innerHTML =
+              '<div class="p-8 text-center text-gray-500 dark:text-gray-400">暂无自定义歌单，点击侧边栏“+”创建</div>'
+            return
+          }
+          diyPlaylists.forEach((pl) => {
+            const firstSongCover =
+              pl.songs.length && pl.songs[0].coverUrl
+                ? pl.songs[0].coverUrl
+                : ""
+            const liItem = document.createElement("li")
+            liItem.className =
+              "playlist-item p-4 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 cursor-pointer"
+            liItem.innerHTML = `
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                  ${
+                    pl.coverPath
+                      ? `<img src="./DIYSongListPage/${pl.coverPath}" class="w-full h-full object-cover">`
+                      : firstSongCover
+                        ? `<img src="${firstSongCover}" class="w-full h-full object-cover">`
+                        : `<svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>`
+                  }
+                </div>
+                <div class="flex-1">
+                  <div class="font-medium dark:text-white">${escapeHtml(pl.name)}</div>
+                  <div class="text-xs text-gray-400">${pl.songs.length}首歌曲</div>
+                </div>
+                <div class="text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                </div>
+              </div>
+            `
+            liItem.addEventListener("dblclick", (e) => {
+              e.stopPropagation()
+              showPlaylistDetail(pl)
+            })
+            liItem.addEventListener("contextmenu", (e) => {
+              e.preventDefault()
+              showPlaylistContextMenu(e, pl)
+            })
+            searchResultList.appendChild(liItem)
+          })
+        }
       })
     }
   }
@@ -2986,13 +3125,14 @@ async function unifiedSearch(keyword) {
   function resetBottomNavActive() {
     const bottomNavButtons = [
       document.getElementById("bottomHomeBtn"),
-      document.getElementById("bottomSearchBtn"),
-      document.getElementById("bottomLibraryBtn"),
+      document.getElementById("bottomFollowBtn"),
+      document.getElementById("bottomLikedBtn"),
+      document.getElementById("bottomRecentBtn"),
+      document.getElementById("bottomLocalBtn"),
+      document.getElementById("bottomPlaylistBtn"),
     ]
     bottomNavButtons.forEach((btn) => {
-      if (btn) {
-        btn.classList.remove("active")
-      }
+      if (btn) btn.classList.remove("active")
     })
   }
 
@@ -3026,50 +3166,8 @@ async function unifiedSearch(keyword) {
     }
   }
 
-  // ========== 绑定菜单按钮事件 ==========
-  function bindMenuBtnEvents() {
-    const menuBtn = document.getElementById("menuBtn")
-    const sidebar = document.getElementById("sidebar")
-    const sidebarOverlay = document.getElementById("sidebarOverlay")
-
-    if (menuBtn) {
-      menuBtn.addEventListener("click", () => {
-        if (sidebar) {
-          sidebar.classList.toggle("show")
-          if (sidebarOverlay) {
-            sidebarOverlay.classList.toggle("hidden")
-          }
-        }
-      })
-    }
-
-    if (sidebarOverlay) {
-      sidebarOverlay.addEventListener("click", () => {
-        if (sidebar) {
-          sidebar.classList.remove("show")
-          sidebarOverlay.classList.add("hidden")
-        }
-      })
-    }
-  }
-
-  // ========== 关闭侧边栏 ==========
-  function closeSidebar() {
-    const sidebar = document.getElementById("sidebar")
-    const sidebarOverlay = document.getElementById("sidebarOverlay")
-    if (sidebar) {
-      sidebar.classList.remove("show")
-    }
-    if (sidebarOverlay) {
-      sidebarOverlay.classList.add("hidden")
-    }
-  }
-
   // ========== 显示搜索界面 ==========
   function showSearchUI() {
-    // 关闭侧边栏
-    closeSidebar()
-
     // 显示搜索输入框
     const searchInput = document.getElementById("searchInput")
     if (searchInput) {

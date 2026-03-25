@@ -46,6 +46,17 @@ dependencies {
     implementation project(':capacitor-cordova-android-plugins')
 }
 
+// 自动复制前端资源任务（每次构建前执行）
+task copyWebAssets(type: Copy) {
+    description = '复制最新前端资源到 Android assets 目录'
+    from '../../src/renderer'   // 相对于当前模块（android/app）的路径
+    into 'src/main/assets/public'
+    include '**/*'
+}
+
+// 让构建任务在编译前自动执行资源复制
+preBuild.dependsOn copyWebAssets
+
 apply from: 'capacitor.build.gradle'
 
 try {

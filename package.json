@@ -23,7 +23,9 @@
     "@capacitor/android": "^8.2.0",
     "@capacitor/cli": "^8.2.0",
     "@capacitor/core": "^8.2.0",
+    "@capacitor/filesystem": "^8.1.2",
     "@capacitor/preferences": "^8.0.1",
+    "@capawesome/capacitor-file-picker": "^8.0.2",
     "axios": "^1.6.8",
     "electron-squirrel-startup": "^1.0.0"
   },

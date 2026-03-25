@@ -132,20 +132,20 @@ src/
 │   │       ├── helpers.js          # 通用工具
 │   │       └── dom.js              # DOM 操作
 │
-├── config/                         # 配置文件
-│   ├── forge.config.js             # Electron Forge 配置
-│   ├── tailwind.config.js          # Tailwind 配置
-│   └── postcss.config.js           # PostCSS 配置
-│
-├── android/                        # Android 项目
-│   ├── app/                        # Android 应用
-│   ├── gradle/                     # Gradle 配置
-│   └── build.gradle                # 项目构建配置
-│
-├── package.json                    # 项目配置
-├── package-lock.json               # 依赖锁定文件
-├── capacitor.config.ts             # Capacitor 配置
-└── README.md                       # 项目说明
+└── config/                         # 配置文件
+    ├── forge.config.js             # Electron Forge 配置
+    ├── tailwind.config.js          # Tailwind 配置
+    └── postcss.config.js           # PostCSS 配置
+
+android/                            # Android 项目
+├── app/                            # Android 应用
+├── gradle/                         # Gradle 配置
+└── build.gradle                    # 项目构建配置
+
+package.json                        # 项目配置
+package-lock.json                   # 依赖锁定文件
+capacitor.config.ts                 # Capacitor 配置
+README.md                           # 项目说明
 ```
 
 ## 💾 本地数据管理

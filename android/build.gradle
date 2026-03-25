@@ -24,18 +24,7 @@ allprojects {
     }
 }
 
-// 强制统一 Kotlin 版本，解决重复类冲突
-subprojects {
-    configurations.all {
-        resolutionStrategy {
-            eachDependency { details ->
-                if (details.requested.group == 'org.jetbrains.kotlin') {
-                    details.useVersion '1.8.22'
-                }
-            }
-        }
-    }
-}
+// 移除强制统一Kotlin版本的配置，让Gradle自动解析依赖
 
 task clean(type: Delete) {
     delete rootProject.buildDir

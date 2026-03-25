@@ -1,16 +1,16 @@
-import store from '../store/index.js'
-import api from '../services/api.js'
-import storageAdapter from '../services/storageAdapter.js'
+import store from "../store/index.js"
+import api from "../services/api.js"
+import storageAdapter from "../services/storageAdapter.js"
 
 class Recent {
   // 加载最近播放
   async loadLatestPlayed() {
     try {
       const latestPlayed = await api.readLatestPlayed()
-      store.dispatch('setLatestPlayed', latestPlayed)
+      store.dispatch("setLatestPlayed", latestPlayed)
       return latestPlayed
     } catch (error) {
-      console.error('加载最近播放失败:', error)
+      console.error("加载最近播放失败:", error)
       return []
     }
   }
@@ -23,7 +23,7 @@ class Recent {
 
   // 添加歌曲到最近播放
   async addToLatestPlayed(song) {
-    store.dispatch('addToLatestPlayed', song)
+    store.dispatch("addToLatestPlayed", song)
     await this.saveLatestPlayed()
   }
 
@@ -41,15 +41,15 @@ class Recent {
 
   // 清空最近播放
   async clearLatestPlayed() {
-    store.dispatch('setLatestPlayed', [])
+    store.dispatch("setLatestPlayed", [])
     await this.saveLatestPlayed()
   }
 
   // 移除最近播放中的歌曲
   async removeFromLatestPlayed(songId) {
     const state = store.getState()
-    const newLatest = state.latestPlayed.filter(song => song.id !== songId)
-    store.dispatch('setLatestPlayed', newLatest)
+    const newLatest = state.latestPlayed.filter((song) => song.id !== songId)
+    store.dispatch("setLatestPlayed", newLatest)
     await this.saveLatestPlayed()
   }
 }
