@@ -52,34 +52,49 @@
 
     // 获取歌词
     fetchLyrics: async function (songId) {
-      try {
-        const lyricUrl = `https://api.qijieya.cn/meting/?server=netease&type=lrc&id=${songId}`
+  try {
+    const lyricUrl = `https://api.qijieya.cn/meting/?server=netease&type=lrc&id=${songId}`;
+    const response = await fetch(lyricUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      },
+    });
 
-        const response = await fetch(lyricUrl, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-          },
-        })
-
-        if (!response.ok) {
-          // 如果直接请求失败，尝试使用 CORS 代理
-          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(lyricUrl)}`
-          const proxyResponse = await fetch(proxyUrl)
-
-          if (!proxyResponse.ok) {
-            throw new Error(`获取歌词失败，状态码：${proxyResponse.status}`)
-          }
-
-          return await proxyResponse.json()
-        }
-
-        return await response.json()
-      } catch (error) {
-        console.error("获取歌词失败:", error)
-        return null
+    let text;
+    if (!response.ok) {
+      // 尝试使用 CORS 代理
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(lyricUrl)}`;
+      const proxyResponse = await fetch(proxyUrl);
+      if (!proxyResponse.ok) {
+        throw new Error(`获取歌词失败，状态码：${proxyResponse.status}`);
       }
-    },
+      text = await proxyResponse.text();
+    } else {
+      text = await response.text();
+    }
+
+    // 尝试解析 JSON（有些 API 可能返回 JSON 对象）
+    try {
+      const json = JSON.parse(text);
+      // 如果解析成功，提取 lrc 字段（兼容不同结构）
+      if (typeof json === 'object') {
+        return {
+          lrc: json.lrc || (typeof json === 'string' ? json : ''),
+          tlrc: json.tlrc || ''
+        };
+      } else {
+        return { lrc: text, tlrc: '' };
+      }
+    } catch (e) {
+      // 纯文本歌词，直接返回
+      return { lrc: text, tlrc: '' };
+    }
+  } catch (error) {
+    console.error("获取歌词失败:", error);
+    return null;
+  }
+},
 
     // 读取我喜欢的歌曲
     readLikedSongs: async function () {
