@@ -1662,58 +1662,74 @@
 
   // ========== 统一搜索函数 ==========
 async function unifiedSearch(keyword) {
-  if (!keyword || isSearching) return
-  isSearching = true
+  if (!keyword || isSearching) return;
+  isSearching = true;
   try {
-    // 强制获取最新容器
-    const container = document.getElementById("searchResultList")
-    const loadMore = document.getElementById("loadMoreBtn")
-    const resultsSection = document.getElementById("searchResultsSection")
-    const detailSection = document.getElementById("playlistDetailSection")
-    const backBtn = document.getElementById("backToSearchBtn")
-
     // 显示加载动画
-    if (container) {
-      container.innerHTML = `<div class="p-10 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div><p class="mt-2 text-gray-600 dark:text-gray-400">搜索中...</p></div>`
+    if (searchResultList) {
+      searchResultList.innerHTML = `<div class="p-10 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div><p class="mt-2 text-gray-600 dark:text-gray-400">搜索中...</p></div>`;
     }
-    if (resultsSection) resultsSection.classList.remove("hidden")
-    if (detailSection) detailSection.classList.add("hidden")
-    if (backBtn) backBtn.classList.add("hidden")
+    if (searchResultsSection) searchResultsSection.classList.remove("hidden");
+    if (playlistDetailSection) playlistDetailSection.classList.add("hidden");
+    if (backToSearchBtn) backToSearchBtn.classList.add("hidden");
 
-    const url = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=0&limit=20`
+    const url = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=0&limit=20`;
     const response = await fetch(url, {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         Referer: "https://music.163.com/",
         Origin: "https://music.163.com/",
       },
-    })
-    const data = await response.json()
-    const songs = data.result?.songs || []
+    });
+    const data = await response.json();
+    const rawSongs = data.result?.songs || [];
 
-    if (songs.length === 0) {
-      if (container)
-        container.innerHTML =
-          '<div class="p-10 text-center text-gray-500 dark:text-gray-400">未找到相关歌曲</div>'
-      if (loadMore) loadMore.style.display = "none"
-      return
+    if (rawSongs.length === 0) {
+      if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-gray-500 dark:text-gray-400">未找到相关歌曲</div>';
+      if (loadMoreBtn) loadMoreBtn.style.display = "none";
+      return;
     }
 
-    // 保存全局搜索结果
-    searchResults = songs
+    // 转换为包含播放地址的完整歌曲对象
+    const tracks = rawSongs.map(song => {
+      // 尝试使用 helpers 中的转换函数（如果存在）
+      if (window.helpers && window.helpers.mapNeteaseSongToTrack) {
+        return window.helpers.mapNeteaseSongToTrack(song);
+      } else {
+        // 降级手动构造
+        if (!song || !song.id) return null;
+        return {
+          id: song.id.toString(),
+          songId: song.id.toString(),
+          name: song.name?.trim() ?? "未知歌曲",
+          artist: (song.ar && song.ar[0]?.name) || "未知歌手",
+          album: song.al?.name?.trim() ?? "未知专辑",
+          coverUrl: song.al?.picUrl?.replace("http:", "https:") ?? "",
+          duration: song.dt ?? 0,
+          url: `https://api.qijieya.cn/meting/?type=url&id=${song.id}`
+        };
+      }
+    }).filter(t => t !== null);
+
+    if (tracks.length === 0) {
+      if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-gray-500 dark:text-gray-400">无法解析歌曲数据</div>';
+      if (loadMoreBtn) loadMoreBtn.style.display = "none";
+      return;
+    }
+
+    // 保存全局搜索结果（使用转换后的 tracks）
+    searchResults = tracks;
 
     // 渲染列表
-    if (container) {
-      container.innerHTML = ""
-      songs.forEach((song, idx) => {
-        if (!song.id) return
-        const isLiked = likedSongs.some((item) => item.id === song.id)
-        const artist =
-          song.ar && song.ar.length > 0 ? song.ar[0].name : "未知艺术家"
-        const album = song.al && song.al.name ? song.al.name : "未知专辑"
-        const li = document.createElement("li")
-        li.className = "song-item p-4 transition-colors duration-200"
+    if (searchResultList) {
+      searchResultList.innerHTML = "";
+      tracks.forEach((song, idx) => {
+        if (!song.id) return;
+        const isLiked = likedSongs.some(item => item.id === song.id);
+        const artist = song.artist || "未知艺术家";
+        const album = song.album || "未知专辑";
+        const li = document.createElement("li");
+        li.className = "song-item p-4 transition-colors duration-200";
         li.innerHTML = `
           <div class="flex items-center justify-between">
             <div class="flex-1 min-w-0">
@@ -1730,47 +1746,42 @@ async function unifiedSearch(keyword) {
               </button>
             </div>
           </div>
-        `
-        const globalIndex = searchResults.length - songs.length + idx
-        li.dataset.index = globalIndex
-        li.dataset.list = "search"
-        let lastClickTime = 0
+        `;
+        const globalIndex = searchResults.length - tracks.length + idx;
+        li.dataset.index = globalIndex;
+        li.dataset.list = "search";
+        let lastClickTime = 0;
         li.addEventListener("click", (e) => {
-          const now = Date.now()
+          const now = Date.now();
           if (now - lastClickTime < 300) {
-            playSelectedSong(song, "search")
-            lastClickTime = 0
+            playSelectedSong(song, "search");
+            lastClickTime = 0;
           } else {
-            lastClickTime = now
-            selectSong(song, globalIndex, "search")
+            lastClickTime = now;
+            selectSong(song, globalIndex, "search");
           }
-        })
+        });
         li.addEventListener("contextmenu", (e) => {
-          e.preventDefault()
-          showSongContextMenu(e, song)
-        })
-        container.appendChild(li)
-      })
+          e.preventDefault();
+          showSongContextMenu(e, song);
+        });
+        searchResultList.appendChild(li);
+      });
     }
 
-    if (loadMore)
-      loadMore.style.display = songs.length >= PAGE_SIZE ? "block" : "none"
-    if (resultsSection) {
-      resultsSection.classList.remove("fade-in")
-      void resultsSection.offsetWidth
-      resultsSection.classList.add("fade-in")
+    if (loadMoreBtn) loadMoreBtn.style.display = tracks.length >= PAGE_SIZE ? "block" : "none";
+    if (searchResultsSection) {
+      searchResultsSection.classList.remove("fade-in");
+      void searchResultsSection.offsetWidth;
+      searchResultsSection.classList.add("fade-in");
     }
-    await updateSearchHistory(keyword)
+    await updateSearchHistory(keyword);
   } catch (err) {
-    console.error("搜索失败", err)
-    const container = document.getElementById("searchResultList")
-    if (container)
-      container.innerHTML =
-        '<div class="p-10 text-center text-red-500 dark:text-red-400">搜索失败，请稍后重试</div>'
-    const loadMore = document.getElementById("loadMoreBtn")
-    if (loadMore) loadMore.style.display = "none"
+    console.error("搜索失败", err);
+    if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-red-500 dark:text-red-400">搜索失败，请稍后重试</div>';
+    if (loadMoreBtn) loadMoreBtn.style.display = "none";
   } finally {
-    isSearching = false
+    isSearching = false;
   }
 }
 
@@ -2655,100 +2666,109 @@ async function unifiedSearch(keyword) {
       })
     }
 
+//     if (searchBtn) {
+//   searchBtn.addEventListener("click", async () => {
+//     const keyword = searchInput ? searchInput.value.trim() : "";
+//     if (!keyword) return;
+
+//     // 显示加载动画
+//     if (searchResultList) {
+//       searchResultList.innerHTML = `<div class="p-10 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div><p class="mt-2 text-gray-600 dark:text-gray-400">搜索中...</p></div>`;
+//     }
+//     if (searchResultsSection) searchResultsSection.classList.remove("hidden");
+//     if (playlistDetailSection) playlistDetailSection.classList.add("hidden");
+//     if (backToSearchBtn) backToSearchBtn.classList.add("hidden");
+
+//     try {
+//       const url = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=0&limit=20`;
+//       const response = await fetch(url, {
+//         headers: {
+//           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+//           Referer: "https://music.163.com/",
+//           Origin: "https://music.163.com/",
+//         },
+//       });
+//       const data = await response.json();
+//       const songs = data.result?.songs || [];
+
+//       if (songs.length === 0) {
+//         if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-gray-500 dark:text-gray-400">未找到相关歌曲</div>';
+//         if (loadMoreBtn) loadMoreBtn.style.display = "none";
+//         return;
+//       }
+
+//       // 保存全局搜索结果
+//       searchResults = songs;
+
+//       // 渲染列表
+//       if (searchResultList) {
+//         searchResultList.innerHTML = "";
+//         songs.forEach((song, idx) => {
+//           if (!song.id) return;
+//           const isLiked = likedSongs.some(item => item.id === song.id);
+//           const artist = song.ar && song.ar.length > 0 ? song.ar[0].name : "未知艺术家";
+//           const album = song.al && song.al.name ? song.al.name : "未知专辑";
+//           const li = document.createElement("li");
+//           li.className = "song-item p-4 transition-colors duration-200";
+//           li.innerHTML = `
+//             <div class="flex items-center justify-between">
+//               <div class="flex-1 min-w-0">
+//                 <h3 class="font-medium dark:text-white truncate">${song.name}</h3>
+//                 <p class="text-sm text-gray-400 dark:text-gray-500 truncate">${artist} - ${album}</p>
+//               </div>
+//               <div class="flex items-center gap-2 flex-shrink-0">
+//                 <button class="like-btn ${isLiked ? "text-red-500" : "text-gray-400 dark:text-gray-500"} hover:text-red-500 transition-colors" data-song-id="${song.id}">
+//                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="${isLiked ? "currentColor" : "none"}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+//                 </button>
+//                 <button class="add-to-playlist" data-song-id="${song.id}">+</button>
+//                 <button class="more-btn" data-song-id="${song.id}">
+//                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+//                 </button>
+//               </div>
+//             </div>
+//           `;
+//           const globalIndex = searchResults.length - songs.length + idx;
+//           li.dataset.index = globalIndex;
+//           li.dataset.list = "search";
+//           let lastClickTime = 0;
+//           li.addEventListener("click", (e) => {
+//             const now = Date.now();
+//             if (now - lastClickTime < 300) {
+//               playSelectedSong(song, "search");
+//               lastClickTime = 0;
+//             } else {
+//               lastClickTime = now;
+//               selectSong(song, globalIndex, "search");
+//             }
+//           });
+//           li.addEventListener("contextmenu", (e) => {
+//             e.preventDefault();
+//             showSongContextMenu(e, song);
+//           });
+//           searchResultList.appendChild(li);
+//         });
+//       }
+
+//       if (loadMoreBtn) loadMoreBtn.style.display = songs.length >= PAGE_SIZE ? "block" : "none";
+//       if (searchResultsSection) {
+//         searchResultsSection.classList.remove("fade-in");
+//         void searchResultsSection.offsetWidth;
+//         searchResultsSection.classList.add("fade-in");
+//       }
+//       await updateSearchHistory(keyword);
+//     } catch (err) {
+//       console.error("搜索失败", err);
+//       if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-red-500 dark:text-red-400">搜索失败，请稍后重试</div>';
+//       if (loadMoreBtn) loadMoreBtn.style.display = "none";
+//     }
+//   });
+    // }
+    
     if (searchBtn) {
   searchBtn.addEventListener("click", async () => {
     const keyword = searchInput ? searchInput.value.trim() : "";
-    if (!keyword) return;
-
-    // 显示加载动画
-    if (searchResultList) {
-      searchResultList.innerHTML = `<div class="p-10 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div><p class="mt-2 text-gray-600 dark:text-gray-400">搜索中...</p></div>`;
-    }
-    if (searchResultsSection) searchResultsSection.classList.remove("hidden");
-    if (playlistDetailSection) playlistDetailSection.classList.add("hidden");
-    if (backToSearchBtn) backToSearchBtn.classList.add("hidden");
-
-    try {
-      const url = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=0&limit=20`;
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-          Referer: "https://music.163.com/",
-          Origin: "https://music.163.com/",
-        },
-      });
-      const data = await response.json();
-      const songs = data.result?.songs || [];
-
-      if (songs.length === 0) {
-        if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-gray-500 dark:text-gray-400">未找到相关歌曲</div>';
-        if (loadMoreBtn) loadMoreBtn.style.display = "none";
-        return;
-      }
-
-      // 保存全局搜索结果
-      searchResults = songs;
-
-      // 渲染列表
-      if (searchResultList) {
-        searchResultList.innerHTML = "";
-        songs.forEach((song, idx) => {
-          if (!song.id) return;
-          const isLiked = likedSongs.some(item => item.id === song.id);
-          const artist = song.ar && song.ar.length > 0 ? song.ar[0].name : "未知艺术家";
-          const album = song.al && song.al.name ? song.al.name : "未知专辑";
-          const li = document.createElement("li");
-          li.className = "song-item p-4 transition-colors duration-200";
-          li.innerHTML = `
-            <div class="flex items-center justify-between">
-              <div class="flex-1 min-w-0">
-                <h3 class="font-medium dark:text-white truncate">${song.name}</h3>
-                <p class="text-sm text-gray-400 dark:text-gray-500 truncate">${artist} - ${album}</p>
-              </div>
-              <div class="flex items-center gap-2 flex-shrink-0">
-                <button class="like-btn ${isLiked ? "text-red-500" : "text-gray-400 dark:text-gray-500"} hover:text-red-500 transition-colors" data-song-id="${song.id}">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="${isLiked ? "currentColor" : "none"}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                </button>
-                <button class="add-to-playlist" data-song-id="${song.id}">+</button>
-                <button class="more-btn" data-song-id="${song.id}">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
-                </button>
-              </div>
-            </div>
-          `;
-          const globalIndex = searchResults.length - songs.length + idx;
-          li.dataset.index = globalIndex;
-          li.dataset.list = "search";
-          let lastClickTime = 0;
-          li.addEventListener("click", (e) => {
-            const now = Date.now();
-            if (now - lastClickTime < 300) {
-              playSelectedSong(song, "search");
-              lastClickTime = 0;
-            } else {
-              lastClickTime = now;
-              selectSong(song, globalIndex, "search");
-            }
-          });
-          li.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-            showSongContextMenu(e, song);
-          });
-          searchResultList.appendChild(li);
-        });
-      }
-
-      if (loadMoreBtn) loadMoreBtn.style.display = songs.length >= PAGE_SIZE ? "block" : "none";
-      if (searchResultsSection) {
-        searchResultsSection.classList.remove("fade-in");
-        void searchResultsSection.offsetWidth;
-        searchResultsSection.classList.add("fade-in");
-      }
-      await updateSearchHistory(keyword);
-    } catch (err) {
-      console.error("搜索失败", err);
-      if (searchResultList) searchResultList.innerHTML = '<div class="p-10 text-center text-red-500 dark:text-red-400">搜索失败，请稍后重试</div>';
-      if (loadMoreBtn) loadMoreBtn.style.display = "none";
+    if (keyword) {
+      await unifiedSearch(keyword);
     }
   });
 }

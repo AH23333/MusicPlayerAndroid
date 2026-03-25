@@ -25,7 +25,7 @@
 - **无需登录**：无登录权限，无需注册即可使用
 - **本地存储**：无需配置数据库，所有数据均存储在本地文件中
 - **离线播放**：支持离线状态下播放本地歌曲
-- **跨平台**：支持 Windows、macOS、Linux
+- **跨平台**：支持 Windows、macOS、Linux、Android
 
 ## 📷 项目截图
 
@@ -41,6 +41,7 @@
 ## 🛠️ 技术栈
 
 - **Electron**：跨平台桌面应用框架
+- **Capacitor**：跨平台移动应用框架（Android）
 - **Tailwind CSS**：实用优先的CSS框架
 - **JavaScript**：应用逻辑实现
 - **axios**：网络请求库（用于搜索音乐、获取歌词）
@@ -64,6 +65,8 @@ npm install
 
 ### 3. 运行和构建
 
+#### 桌面端（Electron）
+
 ```bash
 # 启动开发模式
 npm start
@@ -73,6 +76,19 @@ npm run package
 
 # 构建可执行文件（生成安装包）
 npm run make
+```
+
+#### 移动端（Android）
+
+```bash
+# 同步项目到 Android
+npx cap sync android
+
+# 打开 Android Studio 进行构建
+npx cap open android
+
+# 构建 APK
+# 在 Android Studio 中点击 "Build > Build Bundle(s) / APK(s) > Build APK(s)"
 ```
 
 ## 📁 项目结构
@@ -108,29 +124,27 @@ src/
 │   │   │   ├── followed.js         # 关注歌手管理
 │   │   │   ├── diyPlaylists.js     # 自建歌单管理
 │   │   │   └── lyrics.js           # 歌词管理
-│   │   ├── ui/                     # UI 组件
-│   │   │   ├── sidebar.js          # 侧边栏
-│   │   │   ├── playlistDetail.js   # 歌单详情
-│   │   │   ├── searchResults.js    # 搜索结果
-│   │   │   ├── playerControls.js   # 播放控件
-│   │   │   ├── lyricsInterface.js  # 歌词界面
-│   │   │   ├── playlistFloat.js    # 播放列表浮窗
-│   │   │   ├── modals.js           # 模态框
-│   │   │   └── toast.js            # 全局提示
 │   │   ├── services/               # 前端服务
 │   │   │   ├── api.js              # API 调用
-│   │   │   └── storage.js          # 数据持久化
+│   │   │   ├── storage.js          # 数据持久化
+│   │   │   └── storageAdapter.js   # 存储适配器（跨平台兼容）
 │   │   └── utils/                  # 工具函数
 │   │       ├── helpers.js          # 通用工具
 │   │       └── dom.js              # DOM 操作
-│   └── assets/                     # 静态资源
 │
 ├── config/                         # 配置文件
 │   ├── forge.config.js             # Electron Forge 配置
 │   ├── tailwind.config.js          # Tailwind 配置
 │   └── postcss.config.js           # PostCSS 配置
 │
+├── android/                        # Android 项目
+│   ├── app/                        # Android 应用
+│   ├── gradle/                     # Gradle 配置
+│   └── build.gradle                # 项目构建配置
+│
 ├── package.json                    # 项目配置
+├── package-lock.json               # 依赖锁定文件
+├── capacitor.config.ts             # Capacitor 配置
 └── README.md                       # 项目说明
 ```
 
@@ -203,3 +217,11 @@ src/
 ## 2026.3.21
 
 - 修复了一些交互及显示问题
+
+## 2026.3.25
+
+- 迁移到 Capacitor 平台，支持 Android 设备
+- 实现了存储适配器，支持跨平台存储
+- 优化了移动端 UI 适配，添加了底部导航栏
+- 修复了搜索结果显示问题
+- 完善了侧边栏交互，添加了半透明遮罩层
