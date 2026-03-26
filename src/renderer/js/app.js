@@ -1310,7 +1310,7 @@
 
     const menu = document.createElement("div")
     menu.className =
-      "absolute bg-white border border-gray-300 rounded shadow-lg z-50 py-2 dark:bg-gray-800 dark:border-gray-700 context-menu"
+      "absolute bg-white border border-gray-300 rounded shadow-lg z-50 py-2 dark:bg-gray-800 dark:border-gray-700 context-menu max-w-[200px] w-max"
     menu.innerHTML = `
       <button class="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 dark:text-white" id="playPlaylistBtn">播放歌单</button>
       <button class="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 dark:text-white" id="editPlaylistBtn">修改歌单</button>
@@ -1542,7 +1542,7 @@
 
     const subMenu = document.createElement("div")
     subMenu.className =
-      "artist-selection-menu absolute bg-white border border-gray-300 rounded shadow-lg z-51 py-2 dark:bg-gray-800 dark:border-gray-700"
+      "artist-selection-menu absolute bg-white border border-gray-300 rounded shadow-lg z-51 py-2 dark:bg-gray-800 dark:border-gray-700 max-w-[200px] w-max"
 
     document.body.appendChild(subMenu)
 
@@ -1850,7 +1850,7 @@
 
     const menu = document.createElement("div")
     menu.className =
-      "absolute bg-white border border-gray-300 rounded shadow-lg z-50 py-2 dark:bg-gray-800 dark:border-gray-700"
+      "absolute bg-white border border-gray-300 rounded shadow-lg z-50 py-2 dark:bg-gray-800 dark:border-gray-700 max-w-[200px] w-max"
 
     menu.innerHTML = `
       <button class="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 dark:text-white" id="addToCurrentPlaylistBtn">添加到当前播放列表</button>
@@ -1924,7 +1924,7 @@
 
     const menu = document.createElement("div")
     menu.className =
-      "absolute bg-white border border-gray-300 rounded shadow-lg z-50 py-2 dark:bg-gray-800 dark:border-gray-700"
+      "absolute bg-white border border-gray-300 rounded shadow-lg z-50 py-2 dark:bg-gray-800 dark:border-gray-700 max-w-[200px] w-max"
 
     document.body.appendChild(menu)
 
@@ -2948,6 +2948,12 @@
         // 显示自定义歌单列表（复用搜索结果区域）
         if (searchResultsSection)
           searchResultsSection.classList.remove("hidden")
+        // 添加淡入动画
+        if (searchResultsSection) {
+          searchResultsSection.classList.remove("fade-in")
+          void searchResultsSection.offsetWidth
+          searchResultsSection.classList.add("fade-in")
+        }
         if (playlistDetailSection) playlistDetailSection.classList.add("hidden")
         const sectionTitle = document.querySelector("#searchResultsSection h2")
         if (sectionTitle) sectionTitle.textContent = "自定义歌单"
@@ -2999,6 +3005,50 @@
             searchResultList.appendChild(liItem)
           })
         }
+      })
+    }
+
+    // 浮动按钮：收起/展开底部导航栏和播放器
+    const togglePlayerBtn = document.getElementById("togglePlayerBtn")
+    if (togglePlayerBtn) {
+      let isPlayerVisible = true
+      togglePlayerBtn.addEventListener("click", () => {
+        const bottomNav = document.getElementById("bottomNav")
+        // 更通用的选择器，不依赖于具体的bottom-*类
+        const playerContainer = document.querySelector(
+          ".fixed.left-0.right-0.border-t"
+        )
+
+        if (isPlayerVisible) {
+          // 收起播放器和导航栏
+          if (bottomNav) {
+            bottomNav.style.transform = "translateY(calc(100%))"
+          }
+          if (playerContainer) {
+            playerContainer.style.transform = "translateY(calc(100% - 8px))"
+          }
+          // 更改按钮图标
+          const icon = togglePlayerBtn.querySelector("svg")
+          if (icon) {
+            icon.innerHTML =
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />'
+          }
+        } else {
+          // 展开播放器和导航栏
+          if (bottomNav) {
+            bottomNav.style.transform = "translateY(0)"
+          }
+          if (playerContainer) {
+            playerContainer.style.transform = "translateY(0)"
+          }
+          // 更改按钮图标
+          const icon = togglePlayerBtn.querySelector("svg")
+          if (icon) {
+            icon.innerHTML =
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />'
+          }
+        }
+        isPlayerVisible = !isPlayerVisible
       })
     }
   }

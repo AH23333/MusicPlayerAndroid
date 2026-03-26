@@ -170,7 +170,8 @@
     <div class="h-full flex items-center justify-center p-4 md:p-8"> <!-- 缩小默认内边距 -->
       <!-- 左侧专辑封面：仅在中等屏幕及以上显示 -->
       <div class="flex-shrink-0 mr-16 ml-8 hidden md:block">
-        <img src="" alt="专辑封面" class="w-96 h-96 object-cover rounded-2xl shadow-2xl" id="lyricsCoverImg" loading="lazy">
+        <img src="" alt="专辑封面" class="w-96 h-96 md:w-48 md:h-48 object-cover rounded-2xl shadow-2xl" id="lyricsCoverImg"
+          loading="lazy">
       </div>
       <!-- 右侧歌词：窄屏时占满宽度，中等屏幕以上保持 flex-1 -->
       <div class="w-full md:flex-1 max-w-3xl flex flex-col h-full md:h-full px-4 md:px-0"> <!-- 窄屏加内边距 -->
@@ -225,12 +226,12 @@
   <!-- 固定底部的播放器 -->
   <!-- 固定底部的播放器（始终展开，无折叠功能） -->
   <div
-    class="fixed bottom-12 left-0 right-0 bg-gray-200 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-700 shadow-lg z-40 pb-0 box-border"
-    style="height: 100px;">
-    <div class="container mx-auto px-3 py-1">
+    class="fixed bottom-50 left-0 right-0 bg-gray-200 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-700 shadow-lg z-40 pb-0 box-border transition-transform duration-300"
+    style="bottom: 50px; height: 100px;">
+    <div class="container mx-auto px-3 py-0 h-full">
 
 
-      <div class="flex flex-col w-full">
+      <div class="flex flex-col w-full h-full">
         <!-- 正在播放信息和音频控件 -->
         <div class="flex items-center w-full mb-1">
           <img id="coverImg" class="w-8 h-8 rounded object-cover mr-2" src="">
@@ -357,7 +358,7 @@
 
   <!-- 底部导航栏（六个模块） -->
   <div id="bottomNav"
-    class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t flex justify-around items-center h-12 z-50">
+    class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t flex justify-around items-center h-12 z-50 transition-transform duration-300">
     <button id="bottomHomeBtn" class="flex flex-col items-center p-2">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -401,6 +402,14 @@
       <span class="text-xs mt-1">自定义歌单</span>
     </button>
   </div>
+
+  <!-- 浮动按钮：收起/展开底部导航栏和播放器 -->
+  <button id="togglePlayerBtn"
+    class="fixed right-4 top-1/2 transform -translate-y-1/2 w-12 h-12 rounded-full bg-emerald-500 text-white shadow-lg flex items-center justify-center z-40">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+    </svg>
+  </button>
 
   <script src="./js/utils/helpers.js"></script>
   <script src="./js/app.js"></script>
