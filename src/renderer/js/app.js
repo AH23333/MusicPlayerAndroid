@@ -483,11 +483,7 @@
     searchResultList = document.getElementById("searchResultList")
     loadMoreBtn = document.getElementById("loadMoreBtn")
     playlistList = document.getElementById("playlistList")
-    playlistSidebarList = document.getElementById("playlistSidebarList")
-    createPlaylistBtn = document.getElementById("createPlaylistBtn")
-    likeSongsBtn = document.getElementById("likeSongsBtn")
     likeCount = document.getElementById("likeCount")
-    recentPlayBtn = document.getElementById("recentPlayBtn")
     recentCount = document.getElementById("recentCount")
     togglePlaylistBtn = document.getElementById("togglePlaylistBtn")
     closePlaylistBtn = document.getElementById("closePlaylistBtn")
@@ -714,102 +710,8 @@
   }
 
   function renderPlaylistSidebar() {
-    if (!playlistSidebarList) return
-    playlistSidebarList.innerHTML = ""
-    diyPlaylists.forEach((playlist, index) => {
-      const li = document.createElement("li")
-      li.className =
-        "flex items-center gap-2 p-2 rounded hover:bg-gray-300 transition-colors duration-200 cursor-pointer dark:hover:bg-gray-700"
-      const hasCover = playlist.coverPath && playlist.coverPath !== ""
-      const hasSongCover =
-        playlist.songs.length > 0 &&
-        playlist.songs[0].coverUrl &&
-        playlist.songs[0].coverUrl !== ""
-      li.innerHTML = `
-        ${hasCover ? `<img src="./DIYSongListPage/${playlist.coverPath}" class="w-8 h-8 rounded object-cover" />` : hasSongCover ? `<img src="${playlist.songs[0].coverUrl}" class="w-8 h-8 rounded object-cover" />` : `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>`}
-        <span class="flex-1">${playlist.name}</span>
-        <span class="text-xs text-gray-400">${playlist.songs.length}</span>
-      `
-      li.dataset.index = index
-
-      // 单击/双击逻辑
-      let clickTimer = null
-      li.addEventListener("click", (e) => {
-        if (clickTimer) {
-          clearTimeout(clickTimer)
-          clickTimer = null
-          // 双击：进入歌单详情
-          showPlaylistDetail(playlist)
-        } else {
-          clickTimer = setTimeout(() => {
-            clickTimer = null
-            // 单击：显示所有自建歌单列表（复用搜索结果区域）
-            if (searchResultsSection)
-              searchResultsSection.classList.remove("hidden")
-            if (playlistDetailSection)
-              playlistDetailSection.classList.add("hidden")
-            const sectionTitle = document.querySelector(
-              "#searchResultsSection h2"
-            )
-            if (sectionTitle) sectionTitle.textContent = "自定义歌单"
-            if (loadMoreBtn) loadMoreBtn.style.display = "none"
-            if (backToSearchBtn) backToSearchBtn.classList.remove("hidden")
-            if (searchResultList) {
-              searchResultList.innerHTML = ""
-              if (diyPlaylists.length === 0) {
-                searchResultList.innerHTML =
-                  '<div class="p-8 text-center text-gray-500 dark:text-gray-400">暂无自定义歌单，点击侧边栏“+”创建</div>'
-                return
-              }
-              diyPlaylists.forEach((pl) => {
-                const firstSongCover =
-                  pl.songs.length && pl.songs[0].coverUrl
-                    ? pl.songs[0].coverUrl
-                    : ""
-                const liItem = document.createElement("li")
-                liItem.className =
-                  "playlist-item p-4 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 cursor-pointer"
-                liItem.innerHTML = `
-                  <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded overflow-hidden flex-shrink-0">
-                      ${
-                        pl.coverPath
-                          ? `<img src="./DIYSongListPage/${pl.coverPath}" class="w-full h-full object-cover">`
-                          : firstSongCover
-                            ? `<img src="${firstSongCover}" class="w-full h-full object-cover">`
-                            : `<svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>`
-                      }
-                    </div>
-                    <div class="flex-1">
-                      <div class="font-medium dark:text-white">${escapeHtml(pl.name)}</div>
-                      <div class="text-xs text-gray-400">${pl.songs.length}首歌曲</div>
-                    </div>
-                    <div class="text-gray-400">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                    </div>
-                  </div>
-                `
-                liItem.addEventListener("dblclick", (e) => {
-                  e.stopPropagation()
-                  showPlaylistDetail(pl)
-                })
-                liItem.addEventListener("contextmenu", (e) => {
-                  e.preventDefault()
-                  showPlaylistContextMenu(e, pl)
-                })
-                searchResultList.appendChild(liItem)
-              })
-            }
-          }, 200)
-        }
-      })
-
-      li.addEventListener("contextmenu", (e) => {
-        e.preventDefault()
-        showPlaylistContextMenu(e, playlist)
-      })
-      playlistSidebarList.appendChild(li)
-    })
+    // 侧边栏已移除，此函数不再需要执行任何操作
+    return
   }
 
   function editPlaylist(playlist) {
@@ -1202,7 +1104,7 @@
     currentPlaylist = playlist
     if (backToSearchBtn) backToSearchBtn.classList.remove("hidden")
 
-    // 为自定义歌单激活底部导航栏的"我的"按钮
+    // 激活对应底部导航栏按钮
     if (
       playlist.id &&
       playlist.id !== "liked" &&
@@ -1210,7 +1112,9 @@
       playlist.id !== "local" &&
       playlist.id !== "followed"
     ) {
-      setActiveBottomNav("local")
+      setActiveBottomNav("playlist")
+    } else if (playlist.id) {
+      setActiveBottomNav(playlist.id)
     }
 
     if (
@@ -2580,7 +2484,6 @@
               showToast("保存失败，请检查日志")
               return
             }
-            renderPlaylistSidebar()
             if (currentPlaylist && currentPlaylist.id === targetPlaylist.id) {
               showPlaylistDetail(targetPlaylist)
             }
@@ -2623,7 +2526,6 @@
               showToast("保存失败，请检查日志")
               return
             }
-            renderPlaylistSidebar()
             showToast(`已创建歌单：${name}`)
             if (playlistEditModal) playlistEditModal.classList.add("hidden")
           } catch (err) {
@@ -2634,31 +2536,7 @@
       })
     }
 
-    // 功能按钮
-    if (likeSongsBtn)
-      likeSongsBtn.addEventListener("click", () => {
-        showLikedSongs()
-        setActiveBottomNav("liked")
-      })
-    if (recentPlayBtn)
-      recentPlayBtn.addEventListener("click", () => {
-        showRecentSongs()
-        setActiveBottomNav("recent")
-      })
-
-    const localSongsBtn = document.getElementById("localSongsBtn")
-    if (localSongsBtn)
-      localSongsBtn.addEventListener("click", () => {
-        showLocalSongs()
-        setActiveBottomNav("local")
-      })
-
-    const followedSongsBtn = document.getElementById("followedSongsBtn")
-    if (followedSongsBtn)
-      followedSongsBtn.addEventListener("click", () => {
-        showFollowedArtists()
-        setActiveBottomNav("followed")
-      })
+    // 功能按钮已移至底部导航栏
 
     // 导入本地歌曲
     const importLocalBtn = document.getElementById("importLocalBtn")
@@ -2925,7 +2803,6 @@
     initDOMElements()
     bindAllEvents()
     setupAudioListeners()
-    setupSidebarResize()
 
     // 绑定底部导航栏事件
     bindBottomNavEvents()
@@ -2959,7 +2836,6 @@
 
     try {
       customPlaylists = (await api.readCustomPlaylists()) || []
-      renderPlaylistSidebar()
     } catch (err) {
       console.error("读取自定义歌单失败:", err)
       customPlaylists = []
@@ -2975,7 +2851,6 @@
 
     try {
       diyPlaylists = (await api.readDIYPlaylists()) || []
-      renderPlaylistSidebar()
     } catch (err) {
       console.error("读取自建歌单失败:", err)
       diyPlaylists = []
@@ -3025,11 +2900,18 @@
     const bottomPlaylistBtn = document.getElementById("bottomPlaylistBtn")
 
     if (bottomHomeBtn) {
-      bottomHomeBtn.addEventListener("click", () => {
+      console.log("首页按钮已绑定")
+      bottomHomeBtn.addEventListener("click", (e) => {
+        console.log("首页按钮被点击")
+        e.preventDefault()
+        e.stopPropagation()
         resetBottomNavActive()
         bottomHomeBtn.classList.add("active")
-        showSearchUI() // 显示搜索界面（首页）
+        // 返回到搜索结果界面，不聚焦搜索框
+        showSearchResults()
       })
+    } else {
+      console.log("首页按钮未找到")
     }
     if (bottomFollowBtn) {
       bottomFollowBtn.addEventListener("click", () => {
@@ -3140,8 +3022,7 @@
   function setActiveBottomNav(type) {
     resetBottomNavActive()
     switch (type) {
-      case "recent":
-      case "followed":
+      case "home":
         // 激活首页按钮
         const bottomHomeBtn = document.getElementById("bottomHomeBtn")
         if (bottomHomeBtn) {
@@ -3149,18 +3030,38 @@
         }
         break
       case "liked":
-      case "local":
-        // 激活我的按钮
-        const bottomLibraryBtn = document.getElementById("bottomLibraryBtn")
-        if (bottomLibraryBtn) {
-          bottomLibraryBtn.classList.add("active")
+        // 激活我喜欢按钮
+        const bottomLikedBtn = document.getElementById("bottomLikedBtn")
+        if (bottomLikedBtn) {
+          bottomLikedBtn.classList.add("active")
         }
         break
-      case "search":
-        // 激活搜索按钮
-        const bottomSearchBtn = document.getElementById("bottomSearchBtn")
-        if (bottomSearchBtn) {
-          bottomSearchBtn.classList.add("active")
+      case "recent":
+        // 激活最近播放按钮
+        const bottomRecentBtn = document.getElementById("bottomRecentBtn")
+        if (bottomRecentBtn) {
+          bottomRecentBtn.classList.add("active")
+        }
+        break
+      case "local":
+        // 激活本地和下载按钮
+        const bottomLocalBtn = document.getElementById("bottomLocalBtn")
+        if (bottomLocalBtn) {
+          bottomLocalBtn.classList.add("active")
+        }
+        break
+      case "followed":
+        // 激活关注按钮
+        const bottomFollowBtn = document.getElementById("bottomFollowBtn")
+        if (bottomFollowBtn) {
+          bottomFollowBtn.classList.add("active")
+        }
+        break
+      case "playlist":
+        // 激活歌单按钮
+        const bottomPlaylistBtn = document.getElementById("bottomPlaylistBtn")
+        if (bottomPlaylistBtn) {
+          bottomPlaylistBtn.classList.add("active")
         }
         break
     }
@@ -3169,7 +3070,6 @@
   // ========== 显示搜索界面 ==========
   function showSearchUI() {
     // 显示搜索输入框
-    const searchInput = document.getElementById("searchInput")
     if (searchInput) {
       // 清空搜索输入框
       searchInput.value = ""
@@ -3177,41 +3077,67 @@
     }
 
     // 清空搜索结果
-    const searchResultList = document.getElementById("searchResultList")
     if (searchResultList) {
       searchResultList.innerHTML = ""
     }
 
     // 隐藏加载更多按钮
-    const loadMoreBtn = document.getElementById("loadMoreBtn")
     if (loadMoreBtn) {
       loadMoreBtn.style.display = "none"
     }
 
-    // 隐藏歌单详情区域
-    const playlistDetailSection = document.getElementById(
-      "playlistDetailSection"
-    )
-    if (playlistDetailSection) {
-      playlistDetailSection.style.display = "none"
-    }
+    // 隐藏歌单详情区域，显示搜索结果区域
+    if (playlistDetailSection) playlistDetailSection.classList.add("hidden")
+    if (searchResultsSection) searchResultsSection.classList.remove("hidden")
 
-    // 隐藏其他内容，显示搜索相关内容
-    const sections = document.querySelectorAll("section")
-    sections.forEach((section) => {
-      if (section.id !== "searchSection") {
-        section.style.display = "none"
-      } else {
-        section.style.display = "block"
-      }
-    })
+    // 重置 currentPlaylist
+    currentPlaylist = null
 
     // 重置搜索状态
     searchOffset = 0
     hasMoreResults = true
 
     // 激活底部导航栏的搜索按钮
-    setActiveBottomNav("search")
+    setActiveBottomNav("home")
+  }
+
+  // ========== 显示搜索结果界面（不聚焦搜索框） ==========
+  function showSearchResults() {
+    console.log("showSearchResults被调用")
+
+    // 隐藏歌单详情区域，显示搜索结果区域
+    if (playlistDetailSection) playlistDetailSection.classList.add("hidden")
+    if (searchResultsSection) searchResultsSection.classList.remove("hidden")
+
+    // 添加淡入动画
+    if (searchResultsSection) {
+      searchResultsSection.classList.remove("fade-in")
+      void searchResultsSection.offsetWidth
+      searchResultsSection.classList.add("fade-in")
+    }
+
+    // 重置搜索结果标题为"搜索结果"
+    const sectionTitle = document.querySelector("#searchResultsSection h2")
+    if (sectionTitle) sectionTitle.textContent = "搜索结果"
+
+    // 清空搜索结果列表并显示提示
+    if (searchResultList) {
+      if (searchResults.length > 0) {
+        // 如果有之前的搜索结果，重新渲染
+        renderSearchResults(searchResults, 0)
+      } else {
+        // 如果没有搜索结果，清空列表并显示提示
+        searchResultList.innerHTML =
+          '<div class="p-8 text-center text-gray-500 dark:text-gray-400">在上方搜索框输入关键词开始搜索</div>'
+      }
+    }
+
+    // 重置 currentPlaylist
+    currentPlaylist = null
+
+    // 激活底部导航栏的搜索按钮
+    setActiveBottomNav("home")
+    console.log("showSearchResults执行完成")
   }
 
   // 启动应用

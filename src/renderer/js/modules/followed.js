@@ -1,16 +1,16 @@
-import store from '../store/index.js'
-import api from '../services/api.js'
-import storageAdapter from '../services/storageAdapter.js'
+import store from "../store/index.js"
+import api from "../services/api.js"
+import storageAdapter from "../services/storageAdapter.js"
 
 class Followed {
   // 加载关注歌手
   async loadFollowedArtists() {
     try {
       const followedArtists = await api.readFollowedArtists()
-      store.dispatch('setFollowedArtists', followedArtists)
+      store.dispatch("setFollowedArtists", followedArtists)
       return followedArtists
     } catch (error) {
-      console.error('加载关注歌手失败:', error)
+      console.error("加载关注歌手失败:", error)
       return []
     }
   }
@@ -23,14 +23,14 @@ class Followed {
 
   // 切换歌手关注状态
   async toggleFollowed(artist) {
-    store.dispatch('toggleFollowedArtist', artist)
+    store.dispatch("toggleFollowedArtist", artist)
     await this.saveFollowedArtists()
   }
 
   // 检查歌手是否被关注
   isFollowed(artistName) {
     const state = store.getState()
-    return state.followedArtists.some(artist => artist.name === artistName)
+    return state.followedArtists.some((artist) => artist.name === artistName)
   }
 
   // 获取关注歌手列表
@@ -47,7 +47,7 @@ class Followed {
 
   // 清空关注歌手
   async clearFollowedArtists() {
-    store.dispatch('setFollowedArtists', [])
+    store.dispatch("setFollowedArtists", [])
     await this.saveFollowedArtists()
   }
 }

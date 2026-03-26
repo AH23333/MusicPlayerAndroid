@@ -1,16 +1,16 @@
-import store from '../store/index.js'
-import api from '../services/api.js'
-import storageAdapter from '../services/storageAdapter.js'
+import store from "../store/index.js"
+import api from "../services/api.js"
+import storageAdapter from "../services/storageAdapter.js"
 
 class Local {
   // 加载本地歌曲
   async loadLocalSongs() {
     try {
       const localSongs = await api.readLocalSongs()
-      store.dispatch('setLocalSongs', localSongs)
+      store.dispatch("setLocalSongs", localSongs)
       return localSongs
     } catch (error) {
-      console.error('加载本地歌曲失败:', error)
+      console.error("加载本地歌曲失败:", error)
       return []
     }
   }
@@ -26,7 +26,7 @@ class Local {
       }
       return []
     } catch (error) {
-      console.error('导入本地歌曲失败:', error)
+      console.error("导入本地歌曲失败:", error)
       return []
     }
   }
@@ -42,7 +42,7 @@ class Local {
       }
       return false
     } catch (error) {
-      console.error('删除本地歌曲失败:', error)
+      console.error("删除本地歌曲失败:", error)
       return false
     }
   }
