@@ -49,31 +49,22 @@ class ApiService {
 
   // 获取歌词
   async fetchLyrics(songId) {
+    console.log("[歌词] 开始获取，歌曲ID:", songId)
     try {
       const lyricUrl = `https://api.qijieya.cn/meting/?server=netease&type=lrc&id=${songId}`
-
-      const response = await fetch(lyricUrl, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        },
-      })
-
-      if (!response.ok) {
-        // 如果直接请求失败，尝试使用 CORS 代理
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(lyricUrl)}`
-        const proxyResponse = await fetch(proxyUrl)
-
-        if (!proxyResponse.ok) {
-          throw new Error(`获取歌词失败，状态码：${proxyResponse.status}`)
-        }
-
-        return await proxyResponse.json()
+      const response = await fetch(lyricUrl)
+      const text = await response.text()
+      console.log("[歌词] 原始响应长度:", text.length)
+      try {
+        const json = JSON.parse(text)
+        console.log("[歌词] 解析为JSON成功，包含lrc字段:", !!json.lrc)
+        return { lrc: json.lrc || json, tlrc: json.tlrc || "" }
+      } catch (e) {
+        console.log("[歌词] 解析为纯文本歌词")
+        return { lrc: text, tlrc: "" }
       }
-
-      return await response.json()
     } catch (error) {
-      console.error("获取歌词失败:", error)
+      console.error("[歌词] 获取失败:", error)
       return null
     }
   }
@@ -262,22 +253,103 @@ class ApiService {
 
   // 读取本地歌曲
   async readLocalSongs() {
-    // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-    return []
+    return await storageAdapter.get("LocalSongs", [])
   }
 
   // 导入本地歌曲
-  async importLocalSongs(filePaths) {
-    // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-    console.log("导入本地歌曲:", filePaths)
-    return { success: false, message: "暂不支持导入本地歌曲" }
+  async importLocalSongs() {
+    try {
+      // 导入Capacitor插件
+      const { FilePicker } = await import("@capawesome/capacitor-file-picker")
+
+      // 选择音频文件
+      const result = await FilePicker.pickFiles({
+        types: ["audio/*"],
+        multiple: true,
+      })
+
+      if (!result || !result.files || result.files.length === 0) {
+        return { success: false, message: "未选择文件" }
+      }
+
+      const files = result.files
+      const newSongs = []
+
+      // 读取现有本地歌曲
+      const existingSongs = await this.readLocalSongs()
+      const existingPaths = new Set(existingSongs.map((song) => song.url))
+
+      for (const file of files) {
+        // 检查是否已存在
+        if (existingPaths.has(file.path)) {
+          continue
+        }
+
+        // 解析文件名获取歌曲信息
+        const fileName = file.name
+        const nameParts = fileName.split(" - ")
+        let title = fileName.replace(/\.[^/.]+$/, "")
+        let artist = "未知艺术家"
+
+        if (nameParts.length >= 2) {
+          artist = nameParts[0]
+          title = nameParts
+            .slice(1)
+            .join(" - ")
+            .replace(/\.[^/.]+$/, "")
+        }
+
+        // 创建歌曲对象
+        const newSong = {
+          id: Date.now() + Math.random(),
+          name: title,
+          artist: artist,
+          album: "本地专辑",
+          url: file.path,
+          cover: "", // 暂时没有封面
+          local: true,
+        }
+
+        newSongs.push(newSong)
+      }
+
+      if (newSongs.length === 0) {
+        return { success: false, message: "没有新歌曲可导入" }
+      }
+
+      // 保存到本地歌曲列表
+      const updatedSongs = [...existingSongs, ...newSongs]
+      await this.saveLocalSongs(updatedSongs)
+
+      return {
+        success: true,
+        message: `成功导入 ${newSongs.length} 首歌曲`,
+        songs: newSongs,
+      }
+    } catch (error) {
+      console.error("导入本地歌曲失败:", error)
+      // 处理用户取消选择的情况
+      if (error.message && error.message.includes("canceled")) {
+        return { success: false, message: "操作已取消" }
+      }
+      return { success: false, message: "导入失败: " + error.message }
+    }
   }
 
   // 删除本地歌曲
   async deleteLocalSong(songUrl) {
-    // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-    console.log("删除本地歌曲:", songUrl)
-    return { success: false, message: "暂不支持删除本地歌曲" }
+    try {
+      // 读取现有本地歌曲
+      const existingSongs = await this.readLocalSongs()
+      // 过滤掉要删除的歌曲
+      const updatedSongs = existingSongs.filter((song) => song.url !== songUrl)
+      // 保存更新后的列表
+      await this.saveLocalSongs(updatedSongs)
+      return { success: true, message: "删除成功" }
+    } catch (error) {
+      console.error("删除本地歌曲失败:", error)
+      return { success: false, message: "删除失败: " + error.message }
+    }
   }
 
   // 下载歌曲

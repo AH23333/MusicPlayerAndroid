@@ -16,9 +16,9 @@ class Local {
   }
 
   // 导入本地歌曲
-  async importLocalSongs(filePaths) {
+  async importLocalSongs() {
     try {
-      const result = await api.importLocalSongs(filePaths)
+      const result = await api.importLocalSongs()
       if (result.success) {
         // 重新加载本地歌曲
         await this.loadLocalSongs()

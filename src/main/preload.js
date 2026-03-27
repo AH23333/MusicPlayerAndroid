@@ -50,6 +50,9 @@ contextBridge.exposeInMainWorld("ElectronAPI", {
   // 新增：检查更新（手动模式）
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
   openDownloadPage: (url) => ipcRenderer.invoke("open-download-page", url),
+  // 新增：音乐下载相关
+  musicDlSearch: (keyword) => ipcRenderer.invoke("music-dl-search", keyword),
+  musicDlLyric: (songId) => ipcRenderer.invoke("music-dl-lyric", songId),
   onUpdateAvailable: (callback) =>
     ipcRenderer.on("update-available", (event, info) => callback(info)),
 })

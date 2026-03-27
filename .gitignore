@@ -65,3 +65,6 @@ capacitor.config.ts
 .env.test.local
 .env.production.local
 integration-log.md
+win_index.html
+yorushika.json
+User.json

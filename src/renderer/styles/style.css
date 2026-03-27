@@ -165,7 +165,27 @@ input[type="range"]::-moz-range-thumb {
 
 /* 播放列表浮窗 */
 #playlistFloat {
-  animation: slideIn 0.3s ease;
+  top: 60px;
+  bottom: 160px;
+  right: 0;
+  width: 280px;
+  height: auto;
+  z-index: 60;
+  /* 移除 transform 样式，由 Tailwind 类控制 */
+  transition: transform 0.3s ease;
+}
+
+/* 防止滚动穿透 */
+#searchResultList,
+#playlistDetailList {
+  overscroll-behavior: contain;
+}
+
+/* 为所有可滚动列表添加overscroll-behavior */
+.playlist-item-list,
+.song-list,
+.followed-artists-list {
+  overscroll-behavior: contain;
 }
 
 @keyframes slideIn {
@@ -245,38 +265,40 @@ input[type="range"]::-moz-range-thumb {
   min-height: 44px;
 }
 
-/* 播放器按钮强制可见 */
+/* 播放器按钮样式 */
 #prevBtn,
 #nextBtn,
 .play-mode-group button,
 #togglePlaylistBtn {
-  background-color: #e5e7eb !important;
-  color: #1f2937 !important;
+  background-color: #e5e7eb;
+  color: #1f2937;
   border-radius: 9999px;
-  width: 28px;
-  height: 28px;
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .dark #prevBtn,
 .dark #nextBtn,
 .dark .play-mode-group button,
 .dark #togglePlaylistBtn {
-  background-color: #374151 !important;
-  color: #f3f4f6 !important;
+  background-color: #374151;
+  color: #f3f4f6;
 }
 
 /* 播放模式按钮高亮状态 */
 .play-mode-group button.active {
-  background-color: #1DB954 !important;
-  color: #ffffff !important;
+  background-color: #1DB954;
+  color: #ffffff;
 }
 
 .dark .play-mode-group button.active {
-  background-color: #1DB954 !important;
-  color: #ffffff !important;
+  background-color: #1DB954;
+  color: #ffffff;
 }
 
 #bottomNav button.active {
@@ -289,19 +311,12 @@ input[type="range"]::-moz-range-thumb {
 
 /* 底部导航栏固定在屏幕最底部 */
 #bottomNav {
-  bottom: 0 !important;
   z-index: 50;
-}
-
-/* 播放器容器位于导航栏上方 */
-.fixed.bottom-0 {
-  bottom: 64px !important; /* 与导航栏高度一致 */
-  z-index: 40;
 }
 
 /* 确保内容区域不被遮挡 */
 #mainContent {
-  padding-bottom: 128px; /* 播放器高度 + 导航栏高度 */
+  padding-bottom: 148px; /* 播放器高度 + 导航栏高度 */
 }
 
 /* 播放器控制栏移动端优化 */
@@ -314,10 +329,18 @@ input[type="range"]::-moz-range-thumb {
   }
   #prevBtn, #nextBtn, .play-mode-group button, #togglePlaylistBtn {
     flex-shrink: 0;
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
   }
   .play-mode-group button {
-    font-size: 12px;
+    font-size: 14px;
   }
+}
+
+/* 播放列表浮窗切换类 */
+.translate-x-full {
+  transform: translateX(100%);
+}
+.translate-x-0 {
+  transform: translateX(0);
 }

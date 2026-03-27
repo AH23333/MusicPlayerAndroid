@@ -90,7 +90,31 @@
       <div class="flex-1 overflow-y-auto p-6 pb-20">
         <!-- 搜索结果 -->
         <div id="searchResultsSection" class="mb-8 hidden">
-          <h2 class="text-xl font-bold mb-4 dark:text-white">搜索结果</h2>
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold dark:text-white">搜索结果</h2>
+            <!-- 自定义歌单操作按钮，默认隐藏 -->
+            <div class="flex gap-2">
+              <!-- 新建/导入歌单按钮 -->
+              <button id="createPlaylistBtn"
+                class="px-3 py-1 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors duration-200 text-sm hidden flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                新建歌单
+              </button>
+              <!-- 导入导出用户信息按钮 -->
+              <button id="importUserInfoBtn"
+                class="px-3 py-1 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors duration-200 text-sm hidden">
+                导入用户信息
+              </button>
+              <button id="exportUserInfoBtn"
+                class="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors duration-200 text-sm hidden dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
+                导出用户信息
+              </button>
+            </div>
+          </div>
           <div class="bg-gray-100 rounded-lg overflow-hidden dark:bg-gray-800">
             <ul id="searchResultList"
               class="divide-y divide-gray-700 dark:divide-gray-700 max-h-[700px] overflow-y-auto">
@@ -165,117 +189,6 @@
     </div>
   </div>
 
-  <!-- 歌词界面 (合并自 index2.html，优化窄屏显示) -->
-  <div id="lyricsInterface" class="fixed inset-0 bg-gray-100 z-45 hidden dark:bg-gray-900">
-    <div class="h-full flex items-center justify-center p-4 md:p-8"> <!-- 缩小默认内边距 -->
-      <!-- 左侧专辑封面：仅在中等屏幕及以上显示 -->
-      <div class="flex-shrink-0 mr-16 ml-8 hidden md:block">
-        <img src="" alt="专辑封面" class="w-96 h-96 md:w-48 md:h-48 object-cover rounded-2xl shadow-2xl" id="lyricsCoverImg"
-          loading="lazy">
-      </div>
-      <!-- 右侧歌词：窄屏时占满宽度，中等屏幕以上保持 flex-1 -->
-      <div class="w-full md:flex-1 max-w-3xl flex flex-col h-full md:h-full px-4 md:px-0"> <!-- 窄屏加内边距 -->
-        <!-- 歌曲信息 -->
-        <div class="text-center mb-4 md:mb-6 flex-shrink-0"> <!-- 减小底部边距 -->
-          <h2 class="text-xl md:text-2xl font-bold dark:text-white mb-1 md:mb-2 truncate" id="lyricsSongTitle">未播放歌曲
-          </h2>
-          <p class="text-gray-400 dark:text-gray-500 truncate text-sm md:text-base" id="lyricsSongArtist">--</p>
-        </div>
-        <!-- 歌词区域 -->
-        <div class="flex-1 min-h-[50vh] md:min-h-[70vh] overflow-y-auto lyrics-scroll-container"> <!-- 窄屏时降低最小高度 -->
-          <div class="lyrics-area" id="lyricsArea">
-            请选择歌曲播放以显示歌词
-          </div>
-        </div>
-      </div>
-      <!-- 关闭按钮 -->
-      <div class="fixed top-4 right-4">
-        <button id="closeLyricsBtn"
-          class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 transition-all duration-200 dark:bg-gray-700 dark:hover:bg-gray-600">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 播放列表浮窗 -->
-  <div id="playlistFloat"
-    class="fixed top-0 right-0 bottom-0 w-52 bg-gray-200 border-l border-gray-300 shadow-lg z-50 transform translate-x-full transition-transform duration-300 dark:bg-gray-800 dark:border-gray-700">
-    <div class="h-full flex flex-col">
-      <!-- 浮窗标题 -->
-      <div class="p-4 border-b border-gray-300 flex items-center justify-between dark:border-gray-700">
-        <h3 class="font-medium dark:text-white">播放列表</h3>
-        <button id="closePlaylistBtn"
-          class="text-gray-400 hover:text-gray-600 transition-colors duration-200 dark:text-gray-500 dark:hover:text-gray-300">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <!-- 播放列表内容 -->
-      <div class="flex-1 overflow-y-auto pb-24">
-        <ul id="playlistList" class="divide-y divide-gray-300 dark:divide-gray-700">
-          <!-- 播放列表动态渲染 -->
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <!-- 固定底部的播放器 -->
-  <!-- 固定底部的播放器（始终展开，无折叠功能） -->
-  <div
-    class="fixed bottom-50 left-0 right-0 bg-gray-200 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-700 shadow-lg z-40 pb-0 box-border transition-transform duration-300"
-    style="bottom: 50px; height: 100px;">
-    <div class="container mx-auto px-3 py-0 h-full">
-
-
-      <div class="flex flex-col w-full h-full">
-        <!-- 正在播放信息和音频控件 -->
-        <div class="flex items-center w-full mb-1">
-          <img id="coverImg" class="w-8 h-8 rounded object-cover mr-2" src="">
-          <div class="flex-1 min-w-0">
-            <div id="songTitle" class="font-semibold text-xs truncate">未播放歌曲</div>
-            <div id="songArtist" class="text-xs text-gray-400 truncate">--</div>
-          </div>
-          <!-- 音频控件 -->
-          <audio id="audioPlayer" controls class="w-3/4" preload="metadata"></audio>
-        </div>
-
-        <!-- 播放控制按钮组（一行） -->
-        <div class="flex items-center justify-between w-full">
-          <button id="prevBtn"
-            class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center">◀</button>
-          <button id="nextBtn"
-            class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center">▶</button>
-          <!-- 播放模式按钮 -->
-          <div class="play-mode-group flex items-center gap-1">
-            <button id="orderBtn" data-mode="order"
-              class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-sm active"
-              title="顺序播放">⇉</button>
-            <button id="reverseBtn" data-mode="reverse"
-              class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-sm"
-              title="倒序播放">⇇</button>
-            <button id="singleLoopBtn" data-mode="singleLoop"
-              class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-sm"
-              title="单曲循环">↺</button>
-            <button id="listLoopBtn" data-mode="listLoop"
-              class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-sm"
-              title="列表循环">∞</button>
-            <button id="shuffleBtn" data-mode="shuffle"
-              class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-sm"
-              title="随机播放">⇄</button>
-          </div>
-          <div class="flex items-center gap-1">
-            <button id="togglePlaylistBtn"
-              class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center">≡</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- 歌单编辑模态框 -->
   <div id="playlistEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6">
@@ -334,6 +247,118 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- 歌词界面 (合并自 index2.html，优化窄屏显示) -->
+  <div id="lyricsInterface" class="fixed inset-0 bg-gray-100 z-45 hidden dark:bg-gray-900">
+    <div class="h-full flex items-center justify-center p-4 md:p-8"> <!-- 缩小默认内边距 -->
+      <!-- 左侧专辑封面：仅在中等屏幕及以上显示 -->
+      <div class="flex-shrink-0 mr-16 ml-8 hidden md:block">
+        <img src="" alt="专辑封面" class="w-96 h-96 md:w-48 md:h-48 object-cover rounded-2xl shadow-2xl" id="lyricsCoverImg"
+          loading="lazy">
+      </div>
+      <!-- 右侧歌词：窄屏时占满宽度，中等屏幕以上保持 flex-1 -->
+      <div class="w-full md:flex-1 max-w-3xl flex flex-col h-full md:h-full px-4 md:px-0"> <!-- 窄屏加内边距 -->
+        <!-- 歌曲信息 -->
+        <div class="text-center mb-4 md:mb-6 flex-shrink-0"> <!-- 减小底部边距 -->
+          <h2 class="text-xl md:text-2xl font-bold dark:text-white mb-1 md:mb-2 truncate" id="lyricsSongTitle">未播放歌曲
+          </h2>
+          <p class="text-gray-400 dark:text-gray-500 truncate text-sm md:text-base" id="lyricsSongArtist">--</p>
+        </div>
+        <!-- 歌词区域 -->
+        <div class="flex-1 min-h-[50vh] md:min-h-[70vh] overflow-y-auto lyrics-scroll-container"> <!-- 窄屏时降低最小高度 -->
+          <div class="lyrics-area" id="lyricsArea">
+            请选择歌曲播放以显示歌词
+          </div>
+        </div>
+      </div>
+      <!-- 关闭按钮 -->
+      <div class="fixed top-4 right-4">
+        <button id="closeLyricsBtn"
+          class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 transition-all duration-200 dark:bg-gray-700 dark:hover:bg-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 播放列表浮窗 -->
+  <div id="playlistFloat"
+    class="fixed w-52 bg-gray-200 border-l border-gray-300 shadow-lg z-60 transform translate-x-full transition-transform duration-300 dark:bg-gray-800 dark:border-gray-700"
+    style="top: 60px; bottom: 152px; right: 0; width: 200px;">
+    <div class="h-full flex flex-col">
+      <!-- 浮窗标题 -->
+      <div class="p-4 border-b border-gray-300 flex items-center justify-between dark:border-gray-700">
+        <h3 class="font-medium dark:text-white">播放列表</h3>
+        <button id="closePlaylistBtn"
+          class="text-gray-400 hover:text-gray-600 transition-colors duration-200 dark:text-gray-500 dark:hover:text-gray-300">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <!-- 播放列表内容 -->
+      <div class="flex-1 overflow-y-auto pb-24">
+        <ul id="playlistList" class="divide-y divide-gray-300 dark:divide-gray-700">
+          <!-- 播放列表动态渲染 -->
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 固定底部的播放器 -->
+  <!-- 固定底部的播放器（始终展开，无折叠功能） -->
+  <div
+    class="fixed bottom-0 left-0 right-0 bg-gray-200 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-700 shadow-lg z-40 pb-0 box-border transition-transform duration-300"
+    style="bottom: 12px; min-height: 140px; height: auto;">
+    <div class="container mx-auto px-3 py-0 h-full">
+
+
+      <div class="flex flex-col w-full h-full">
+        <!-- 正在播放信息和音频控件 -->
+        <div class="flex items-center w-full mb-1">
+          <img id="coverImg" class="w-8 h-8 rounded object-cover mr-2" src="">
+          <div class="flex-1 min-w-0">
+            <div id="songTitle" class="font-semibold text-xs truncate">未播放歌曲</div>
+            <div id="songArtist" class="text-xs text-gray-400 truncate">--</div>
+          </div>
+          <!-- 音频控件 -->
+          <audio id="audioPlayer" controls class="w-3/4" preload="metadata"></audio>
+        </div>
+
+        <!-- 播放控制按钮组（一行） -->
+        <div class="flex items-center justify-between w-full">
+          <button id="prevBtn"
+            class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center">◀</button>
+          <button id="nextBtn"
+            class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center">▶</button>
+          <!-- 播放模式按钮 -->
+          <div class="play-mode-group flex items-center gap-1">
+            <button id="orderBtn" data-mode="order"
+              class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-sm active"
+              title="顺序播放">⇉</button>
+            <button id="reverseBtn" data-mode="reverse"
+              class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-sm"
+              title="倒序播放">⇇</button>
+            <button id="singleLoopBtn" data-mode="singleLoop"
+              class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-sm"
+              title="单曲循环">↺</button>
+            <button id="listLoopBtn" data-mode="listLoop"
+              class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-sm"
+              title="列表循环">∞</button>
+            <button id="shuffleBtn" data-mode="shuffle"
+              class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-sm"
+              title="随机播放">⇄</button>
+          </div>
+          <div class="flex items-center gap-1">
+            <button id="togglePlaylistBtn"
+              class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center">≡</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

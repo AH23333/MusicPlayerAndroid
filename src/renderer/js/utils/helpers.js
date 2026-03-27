@@ -14,14 +14,14 @@ function formatTime(seconds) {
   if (!seconds || isNaN(seconds)) return "0:00"
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs.toString().padStart(2, '0')}`
+  return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
 // 解析歌词
 function parseLyrics(lyricText) {
   if (!lyricText) return []
   const lyrics = []
-  const lines = lyricText.split('\n')
+  const lines = lyricText.split("\n")
   const timeRegex = /\[(\d{1,2}):(\d{2})(?:[:.](\d{2,3}))?\]/g
 
   lines.forEach((line) => {
@@ -32,9 +32,7 @@ function parseLyrics(lyricText) {
         matches.forEach((match) => {
           const minutes = parseInt(match[1])
           const seconds = parseInt(match[2])
-          const milliseconds = match[3]
-            ? parseInt(match[3].padEnd(3, "0"))
-            : 0
+          const milliseconds = match[3] ? parseInt(match[3].padEnd(3, "0")) : 0
           const time = minutes * 60 + seconds + milliseconds / 1000
           lyrics.push({ time, text })
         })
@@ -65,21 +63,21 @@ function debounce(func, wait) {
 // 节流函数
 function throttle(func, limit) {
   let inThrottle
-  return function(...args) {
+  return function (...args) {
     if (!inThrottle) {
       func.apply(this, args)
       inThrottle = true
-      setTimeout(() => inThrottle = false, limit)
+      setTimeout(() => (inThrottle = false), limit)
     }
   }
 }
 
 // 深拷贝
 function deepClone(obj) {
-  if (obj === null || typeof obj !== 'object') return obj
+  if (obj === null || typeof obj !== "object") return obj
   if (obj instanceof Date) return new Date(obj.getTime())
-  if (obj instanceof Array) return obj.map(item => deepClone(item))
-  if (typeof obj === 'object') {
+  if (obj instanceof Array) return obj.map((item) => deepClone(item))
+  if (typeof obj === "object") {
     const clonedObj = {}
     for (const key in obj) {
       if (obj.hasOwnProperty(key)) {
@@ -114,7 +112,7 @@ function isEmpty(obj) {
 function formatSongTitle(title) {
   if (!title) return "未知歌曲"
   // 移除括号内的内容（如 (Live)、(Remix) 等）
-  return title.replace(/\s*\([^)]*\)\s*/g, '').trim()
+  return title.replace(/\s*\([^)]*\)\s*/g, "").trim()
 }
 
 // 格式化歌手名称
@@ -152,9 +150,12 @@ function mapNeteaseSongToTrack(song) {
 const TIMESTAMP_REGEX = /^\[(\d{2}):(\d{2})[\.:](\d{2,3})\](.*)$/
 const METADATA_KEYWORDS = ["歌词贡献者", "翻译贡献者", "作词", "作曲", "编曲"]
 const metadataKeywordPattern = METADATA_KEYWORDS.map((keyword) => {
-  return keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}).join("|");
-const metadataKeywordRegex = new RegExp(`^(${metadataKeywordPattern})\\s*[:：]`, "iu")
+  return keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}).join("|")
+const metadataKeywordRegex = new RegExp(
+  `^(${metadataKeywordPattern})\\s*[:：]`,
+  "iu"
+)
 
 function extractCleanLyrics(content) {
   if (!content) return { clean: "", metadata: [] }
@@ -198,8 +199,7 @@ async function fetchViaProxy(targetUrl) {
         Origin: "https://music.163.com/",
       },
     })
-    if (!response.ok)
-      throw new Error(`直连失败，状态码：${response.status}`)
+    if (!response.ok) throw new Error(`直连失败，状态码：${response.status}`)
     text = await response.text()
     console.log(`直连请求成功，返回数据长度：${text.length}`)
     return JSON.parse(text)
@@ -210,8 +210,7 @@ async function fetchViaProxy(targetUrl) {
       const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
       console.log(`代理请求地址：${proxyUrl}`)
       const proxyRes = await fetch(proxyUrl)
-      if (!proxyRes.ok)
-        throw new Error(`代理失败，状态码：${proxyRes.status}`)
+      if (!proxyRes.ok) throw new Error(`代理失败，状态码：${proxyRes.status}`)
       text = await proxyRes.text()
       const result = typeof text === "string" ? JSON.parse(text) : text
       console.log(
@@ -257,7 +256,7 @@ async function fetchLyricsById(songId) {
 }
 
 // 在浏览器环境中挂载到全局对象
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   window.helpers = {
     API_CONFIGS,
     formatTime,
@@ -274,6 +273,6 @@ if (typeof window !== 'undefined') {
     mapNeteaseSongToTrack,
     extractCleanLyrics,
     fetchViaProxy,
-    fetchLyricsById
-  };
+    fetchLyricsById,
+  }
 }

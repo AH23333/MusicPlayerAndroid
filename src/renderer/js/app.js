@@ -1,306 +1,57 @@
 // ========== 渲染进程入口文件 ==========
 
-;(function () {
+;(async function () {
   "use strict"
 
-  // 导入API服务
-  const api = {
-    // 搜索音乐
-    searchMusic: async function (keyword, offset = 0) {
-      try {
-        // 构建搜索 URL
-        const searchUrl = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=${offset}&limit=20`
-
-        // 使用 fetch 进行网络请求
-        const response = await fetch(searchUrl, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            Referer: "https://music.163.com/",
-            Origin: "https://music.163.com/",
-          },
-        })
-
-        if (!response.ok) {
-          // 如果直接请求失败，尝试使用 CORS 代理
-          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(searchUrl)}`
-          const proxyResponse = await fetch(proxyUrl)
-
-          if (!proxyResponse.ok) {
-            throw new Error(`搜索失败，状态码：${proxyResponse.status}`)
-          }
-
-          return await proxyResponse.json()
-        }
-
-        return await response.json()
-      } catch (error) {
-        console.error("搜索音乐失败:", error)
-        return []
-      }
-    },
-
-    // 保存播放列表
-    savePlaylist: async function (playlist) {
-      return await storageAdapter.set("PlayList", playlist)
-    },
-
-    // 读取播放列表
-    readPlaylist: async function () {
-      return await storageAdapter.get("PlayList", [])
-    },
-
-    // 获取歌词
-    fetchLyrics: async function (songId) {
-      try {
-        const lyricUrl = `https://api.qijieya.cn/meting/?server=netease&type=lrc&id=${songId}`
-        const response = await fetch(lyricUrl, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-          },
-        })
-
-        let text
-        if (!response.ok) {
-          // 尝试使用 CORS 代理
-          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(lyricUrl)}`
-          const proxyResponse = await fetch(proxyUrl)
-          if (!proxyResponse.ok) {
-            throw new Error(`获取歌词失败，状态码：${proxyResponse.status}`)
-          }
-          text = await proxyResponse.text()
-        } else {
-          text = await response.text()
-        }
-
-        // 尝试解析 JSON（有些 API 可能返回 JSON 对象）
-        try {
-          const json = JSON.parse(text)
-          // 如果解析成功，提取 lrc 字段（兼容不同结构）
-          if (typeof json === "object") {
-            return {
-              lrc: json.lrc || (typeof json === "string" ? json : ""),
-              tlrc: json.tlrc || "",
-            }
-          } else {
-            return { lrc: text, tlrc: "" }
-          }
-        } catch (e) {
-          // 纯文本歌词，直接返回
-          return { lrc: text, tlrc: "" }
-        }
-      } catch (error) {
-        console.error("获取歌词失败:", error)
-        return null
-      }
-    },
-
-    // 读取我喜欢的歌曲
-    readLikedSongs: async function () {
-      return await storageAdapter.get("MyFavorite", [])
-    },
-
-    // 保存我喜欢的歌曲
-    saveLikedSongs: async function (likedSongs) {
-      return await storageAdapter.set("MyFavorite", likedSongs)
-    },
-
-    // 读取关注歌手
-    readFollowedArtists: async function () {
-      return await storageAdapter.get("FollowedArtists", [])
-    },
-
-    // 保存关注歌手
-    saveFollowedArtists: async function (followedArtists) {
-      return await storageAdapter.set("FollowedArtists", followedArtists)
-    },
-
-    // 读取自定义歌单
-    readCustomPlaylists: async function () {
-      return await storageAdapter.get("CustomPlaylists", [])
-    },
-
-    // 保存自定义歌单
-    saveCustomPlaylists: async function (playlists) {
-      return await storageAdapter.set("CustomPlaylists", playlists)
-    },
-
-    // 读取最近播放
-    readLatestPlayed: async function () {
-      return await storageAdapter.get("Latest", [])
-    },
-
-    // 保存最近播放
-    saveLatestPlayed: async function (latestPlayed) {
-      return await storageAdapter.set("Latest", latestPlayed)
-    },
-
-    // 读取自建歌单
-    readDIYPlaylists: async function () {
-      return await storageAdapter.get("DIYSongList", [])
-    },
-
-    // 保存自建歌单
-    saveDIYPlaylists: async function (playlists) {
-      return await storageAdapter.set("DIYSongList", playlists)
-    },
-
-    // 保存歌单封面
-    savePlaylistCover: async function (data) {
-      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-      console.log("保存歌单封面:", data)
-      return { success: false, message: "暂不支持保存封面" }
-    },
-
-    // 导出歌单
-    exportPlaylist: async function (playlist) {
-      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-      console.log("导出歌单:", playlist)
-      return { success: false, message: "暂不支持导出歌单" }
-    },
-
-    // 导入歌单
-    importPlaylist: async function () {
-      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-      console.log("导入歌单")
-      return { success: false, message: "暂不支持导入歌单" }
-    },
-
-    // 导出用户信息
-    exportUserInfo: async function () {
-      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-      console.log("导出用户信息")
-      return { success: false, message: "暂不支持导出用户信息" }
-    },
-
-    // 导入用户信息
-    importUserInfo: async function () {
-      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-      console.log("导入用户信息")
-      return { success: false, message: "暂不支持导入用户信息" }
-    },
-
-    // 读取搜索历史
-    readSearchHistory: async function () {
-      return await storageAdapter.get("SearchHistory", [])
-    },
-
-    // 保存搜索历史
-    saveSearchHistory: async function (searchHistory) {
-      return await storageAdapter.set("SearchHistory", searchHistory)
-    },
-
-    // 读取本地歌曲
-    readLocalSongs: async function () {
-      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-      return []
-    },
-
-    // 导入本地歌曲
-    importLocalSongs: async function (filePaths) {
-      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-      console.log("导入本地歌曲:", filePaths)
-      return { success: false, message: "暂不支持导入本地歌曲" }
-    },
-
-    // 删除本地歌曲
-    deleteLocalSong: async function (songUrl) {
-      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-      console.log("删除本地歌曲:", songUrl)
-      return { success: false, message: "暂不支持删除本地歌曲" }
-    },
-
-    // 打开文件选择对话框
-    openFileDialog: async function () {
-      // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-      console.log("打开文件选择对话框")
-      return []
-    },
-
-    // 检查更新
-    checkForUpdates: async function () {
-      // 简化实现，实际项目中可能需要自定义更新检查逻辑
-      console.log("检查更新")
-      return { success: false, message: "暂不支持检查更新" }
-    },
-
-    // 打开下载页面
-    openDownloadPage: async function (url) {
-      // 使用浏览器打开链接
-      window.open(url, "_blank")
-      return { success: true }
-    },
-
-    // 监听更新可用事件
-    onUpdateAvailable: function (callback) {
-      // 简化实现，实际项目中可能需要自定义更新检查逻辑
-      console.log("监听更新可用事件")
-    },
-  }
-
-  // 导入存储适配器
+  // ========== 存储适配器（本地实现） ==========
   const storageAdapter = {
-    // 检查环境
     getEnvironment: function () {
       if (typeof window.Capacitor !== "undefined") return "capacitor"
       return "browser"
     },
 
-    // 保存数据
     async set(key, value) {
       try {
         const jsonValue = JSON.stringify(value)
-
         if (
           typeof window.Capacitor !== "undefined" &&
           window.Capacitor.Plugins &&
           window.Capacitor.Plugins.Preferences
         ) {
-          // 使用 Capacitor Preferences
           await window.Capacitor.Plugins.Preferences.set({
             key: key,
             value: jsonValue,
           })
         } else {
-          // 使用 localStorage 作为浏览器 fallback
           localStorage.setItem(key, jsonValue)
         }
         return true
       } catch (error) {
-        console.error("保存数据失败:", error)
         return false
       }
     },
 
-    // 读取数据
     async get(key, defaultValue = []) {
       try {
         let jsonValue
-
         if (
           typeof window.Capacitor !== "undefined" &&
           window.Capacitor.Plugins &&
           window.Capacitor.Plugins.Preferences
         ) {
-          // 使用 Capacitor Preferences
           const result = await window.Capacitor.Plugins.Preferences.get({
             key: key,
           })
           jsonValue = result.value
         } else {
-          // 使用 localStorage 作为浏览器 fallback
           jsonValue = localStorage.getItem(key)
         }
-
         return jsonValue ? JSON.parse(jsonValue) : defaultValue
       } catch (error) {
-        console.error("读取数据失败:", error)
         return defaultValue
       }
     },
 
-    // 删除数据
     async remove(key) {
       try {
         if (
@@ -308,20 +59,18 @@
           window.Capacitor.Plugins &&
           window.Capacitor.Plugins.Preferences
         ) {
-          // 使用 Capacitor Preferences
-          await window.Capacitor.Plugins.Preferences.remove({ key: key })
+          await window.Capacitor.Plugins.Preferences.remove({
+            key: key,
+          })
         } else {
-          // 使用 localStorage 作为浏览器 fallback
           localStorage.removeItem(key)
         }
         return true
       } catch (error) {
-        console.error("删除数据失败:", error)
         return false
       }
     },
 
-    // 清空所有数据
     async clear() {
       try {
         if (
@@ -329,28 +78,140 @@
           window.Capacitor.Plugins &&
           window.Capacitor.Plugins.Preferences
         ) {
-          // 使用 Capacitor Preferences
           await window.Capacitor.Plugins.Preferences.clear()
         } else {
-          // 使用 localStorage 作为浏览器 fallback
           localStorage.clear()
         }
         return true
       } catch (error) {
-        console.error("清空数据失败:", error)
         return false
       }
     },
+  }
+
+  // ========== API 对象（本地实现） ==========
+  const api = {
+    savePlaylist: async function (playlist) {
+      return await storageAdapter.set("PlayList", playlist)
+    },
+    readPlaylist: async function () {
+      return await storageAdapter.get("PlayList", [])
+    },
+    readLikedSongs: async function () {
+      return await storageAdapter.get("MyFavorite", [])
+    },
+    saveLikedSongs: async function (likedSongs) {
+      return await storageAdapter.set("MyFavorite", likedSongs)
+    },
+    readFollowedArtists: async function () {
+      return await storageAdapter.get("FollowedArtists", [])
+    },
+    saveFollowedArtists: async function (artists) {
+      return await storageAdapter.set("FollowedArtists", artists)
+    },
+    readCustomPlaylists: async function () {
+      return await storageAdapter.get("CustomPlaylists", [])
+    },
+    saveCustomPlaylists: async function (playlists) {
+      return await storageAdapter.set("CustomPlaylists", playlists)
+    },
+    readDIYPlaylists: async function () {
+      return await storageAdapter.get("DIYSongList", [])
+    },
+    saveDIYPlaylists: async function (playlists) {
+      return await storageAdapter.set("DIYSongList", playlists)
+    },
+    readLatestPlayed: async function () {
+      return await storageAdapter.get("Latest", [])
+    },
+    saveLatestPlayed: async function (songs) {
+      return await storageAdapter.set("Latest", songs)
+    },
+    readSearchHistory: async function () {
+      return await storageAdapter.get("SearchHistory", [])
+    },
+    saveSearchHistory: async function (history) {
+      return await storageAdapter.set("SearchHistory", history)
+    },
+    readLocalSongs: async function () {
+      return await storageAdapter.get("LocalSongs", [])
+    },
+    saveLocalSongs: async function (songs) {
+      return await storageAdapter.set("LocalSongs", songs)
+    },
+    searchMusic: async function (keyword, offset = 0) {
+      try {
+        const searchUrl = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=${offset}&limit=20`
+        const response = await fetch(searchUrl, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            Referer: "https://music.163.com/",
+          },
+        })
+        return await response.json()
+      } catch (error) {
+        return { result: { songs: [] } }
+      }
+    },
+    fetchLyrics: async function (songId) {
+      try {
+        const lyricUrl = `https://api.qijieya.cn/meting/?server=netease&type=lrc&id=${songId}`
+        const response = await fetch(lyricUrl)
+        const text = await response.text()
+        try {
+          const json = JSON.parse(text)
+          return { lrc: json.lrc || json, tlrc: json.tlrc || "" }
+        } catch (e) {
+          return { lrc: text, tlrc: "" }
+        }
+      } catch (error) {
+        return null
+      }
+    },
+    savePlaylistCover: async function (data) {
+      return { success: false, message: "暂不支持保存封面" }
+    },
+    exportPlaylist: async function (playlist) {
+      return { success: false, message: "暂不支持导出歌单" }
+    },
+    importPlaylist: async function () {
+      return { success: false, message: "暂不支持导入歌单" }
+    },
+    exportUserInfo: async function () {
+      return { success: false, message: "功能暂不可用" }
+    },
+    importUserInfo: async function () {
+      return { success: false, message: "功能暂不可用" }
+    },
+    importLocalSongs: async function () {
+      return { success: false, message: "功能暂不可用" }
+    },
+    deleteLocalSong: async function (songUrl) {
+      return { success: false, message: "功能暂不可用" }
+    },
+    downloadSong: async function (song) {
+      return { success: false, message: "功能暂不可用" }
+    },
+    openFileDialog: async function () {
+      return []
+    },
+    checkForUpdates: async function () {
+      return { success: false, message: "暂不支持检查更新" }
+    },
+    openDownloadPage: async function (url) {
+      if (url) window.open(url, "_blank")
+      return { success: true }
+    },
+    onUpdateAvailable: function (callback) {},
   }
 
   // ========== 性能优化辅助函数 ==========
   function debounce(fn, delay) {
     let timer
     const debounced = function (...args) {
-      console.log("[防抖] 调用，延迟", delay, "ms")
       clearTimeout(timer)
       timer = setTimeout(() => {
-        console.log("[防抖] 执行目标函数")
         fn.apply(this, args)
       }, delay)
     }
@@ -394,6 +255,7 @@
   let isSearching = false
   let lastActiveIndex = -1
   let animationFrameId = null
+  let currentKeyword = ""
   const MAX_SEARCH_HISTORY = 50
   const PAGE_SIZE = 20
   const MAX_LATEST_PLAYED = 50
@@ -525,6 +387,30 @@
     checkUpdateBtn = document.getElementById("checkUpdateBtn")
     searchHistoryContainer = document.getElementById("searchHistoryContainer")
     searchHistoryList = document.getElementById("searchHistoryList")
+
+    // 检查关键元素
+    const criticalElements = [
+      { name: "searchBtn", el: searchBtn },
+      { name: "searchInput", el: searchInput },
+      { name: "searchResultList", el: searchResultList },
+      { name: "audioPlayer", el: audioPlayer },
+    ]
+
+    let missingElements = []
+    criticalElements.forEach(({ name, el }) => {
+      if (!el) {
+        missingElements.push(name)
+        // 尝试重新获取
+        if (name === "searchBtn")
+          searchBtn = document.getElementById("searchBtn")
+        if (name === "searchInput")
+          searchInput = document.getElementById("searchInput")
+        if (name === "searchResultList")
+          searchResultList = document.getElementById("searchResultList")
+        if (name === "audioPlayer")
+          audioPlayer = document.getElementById("audioPlayer")
+      }
+    })
   }
 
   // ========== 导出用户信息 ==========
@@ -773,9 +659,7 @@
     }
     try {
       await api.saveSearchHistory(searchHistory)
-    } catch (err) {
-      console.error("保存搜索历史失败:", err)
-    }
+    } catch (err) {}
   }
 
   // ========== 显示"我喜欢"歌单 ==========
@@ -804,6 +688,13 @@
     if (playlistDetailSection) playlistDetailSection.classList.add("hidden")
     const sectionTitle = document.querySelector("#searchResultsSection h2")
     if (sectionTitle) sectionTitle.textContent = "关注歌手"
+    // 隐藏操作按钮
+    const createPlaylistBtn = document.getElementById("createPlaylistBtn")
+    const importUserInfoBtn = document.getElementById("importUserInfoBtn")
+    const exportUserInfoBtn = document.getElementById("exportUserInfoBtn")
+    if (createPlaylistBtn) createPlaylistBtn.classList.add("hidden")
+    if (importUserInfoBtn) importUserInfoBtn.classList.add("hidden")
+    if (exportUserInfoBtn) exportUserInfoBtn.classList.add("hidden")
     if (searchResultList) searchResultList.innerHTML = ""
     const loadMoreBtnEl = document.getElementById("loadMoreBtn")
     if (loadMoreBtnEl) loadMoreBtnEl.style.display = "none"
@@ -1103,6 +994,13 @@
     if (playlistDetailSection) playlistDetailSection.classList.remove("hidden")
     currentPlaylist = playlist
     if (backToSearchBtn) backToSearchBtn.classList.remove("hidden")
+    // 隐藏操作按钮
+    const createPlaylistBtn = document.getElementById("createPlaylistBtn")
+    const importUserInfoBtn = document.getElementById("importUserInfoBtn")
+    const exportUserInfoBtn = document.getElementById("exportUserInfoBtn")
+    if (createPlaylistBtn) createPlaylistBtn.classList.add("hidden")
+    if (importUserInfoBtn) importUserInfoBtn.classList.add("hidden")
+    if (exportUserInfoBtn) exportUserInfoBtn.classList.add("hidden")
 
     // 激活对应底部导航栏按钮
     if (
@@ -1140,8 +1038,103 @@
       }
     }
 
+    // 更新歌单信息
+    const playlistDetailName = document.getElementById("playlistDetailName")
+    const playlistDetailDescription = document.getElementById(
+      "playlistDetailDescription"
+    )
+    const playlistSongCount = document.getElementById("playlistSongCount")
+    const playlistCoverImg = document.getElementById("playlistCoverImg")
+
+    if (playlistDetailName) {
+      playlistDetailName.textContent = playlist.name
+    }
+
+    if (playlistDetailDescription) {
+      playlistDetailDescription.textContent = playlist.description || "暂无描述"
+    }
+
+    if (playlistSongCount) {
+      playlistSongCount.textContent = `${playlist.songs.length}首歌曲`
+    }
+
+    if (playlistCoverImg) {
+      if (playlist.coverData) {
+        // 优先使用base64封面数据
+        playlistCoverImg.src = playlist.coverData
+        playlistCoverImg.alt = playlist.name
+      } else if (playlist.coverPath) {
+        // 其次使用封面路径
+        playlistCoverImg.src = `./DIYSongListPage/${playlist.coverPath}`
+        playlistCoverImg.alt = playlist.name
+      } else if (playlist.songs.length > 0 && playlist.songs[0].coverUrl) {
+        // 最后使用第一首歌曲的封面
+        playlistCoverImg.src = playlist.songs[0].coverUrl
+        playlistCoverImg.alt = playlist.name
+      } else {
+        // 无封面时使用默认图标
+        playlistCoverImg.src = ""
+        playlistCoverImg.alt = "歌单封面"
+      }
+    }
+
     const exportPlaylistBtnEl = document.getElementById("exportPlaylistBtn")
     const playPlaylistBtnEl = document.getElementById("playPlaylistBtn")
+
+    // 导出歌单
+    if (exportPlaylistBtnEl) {
+      exportPlaylistBtnEl.addEventListener("click", async () => {
+        try {
+          // 导入Capacitor插件
+          const { Filesystem, Directory } =
+            await import("@capacitor/filesystem")
+
+          // 准备歌单数据
+          const playlistData = {
+            name: playlist.name,
+            description: playlist.description || "",
+            coverPath: playlist.coverPath || "",
+            songs: playlist.songs || [],
+          }
+
+          // 转换为JSON字符串
+          const jsonData = JSON.stringify(playlistData, null, 2)
+
+          // 生成文件名
+          const fileName = `${playlist.name.replace(/[^a-zA-Z0-9]/g, "_")}-${new Date().toISOString().slice(0, 10)}.json`
+
+          // 写入文件
+          const result = await Filesystem.writeFile({
+            path: fileName,
+            data: jsonData,
+            directory: Directory.Documents,
+          })
+
+          showToast(`歌单导出成功：${result.uri}`)
+        } catch (error) {
+          console.error("导出歌单失败:", error)
+          showToast(`导出失败: ${error.message}`)
+        }
+      })
+    }
+
+    // 播放歌单
+    if (playPlaylistBtnEl) {
+      playPlaylistBtnEl.addEventListener("click", () => {
+        if (playlist.songs && playlist.songs.length > 0) {
+          // 清空当前播放队列
+          playQueue = [...playlist.songs]
+          currentSongIndex = 0
+
+          // 播放第一首歌曲
+          playSong(playQueue[0])
+
+          showToast(`开始播放歌单《${playlist.name}》`)
+        } else {
+          showToast("歌单中没有歌曲")
+        }
+      })
+    }
 
     if (
       playlist.id !== "liked" &&
@@ -1531,8 +1524,7 @@
       if (followCountElement)
         followCountElement.textContent = followedArtists.length
     } catch (err) {
-      console.error("保存关注歌手列表失败:", err)
-      showToast("保存关注歌手列表失败，请检查日志")
+      showToast("保存关注歌手列表失败")
     }
   }
 
@@ -1662,6 +1654,7 @@
   async function unifiedSearch(keyword) {
     if (!keyword || isSearching) return
     isSearching = true
+    currentKeyword = keyword
     try {
       // 显示加载动画
       if (searchResultList) {
@@ -1784,7 +1777,6 @@
       }
       await updateSearchHistory(keyword)
     } catch (err) {
-      console.error("搜索失败", err)
       if (searchResultList)
         searchResultList.innerHTML =
           '<div class="p-10 text-center text-red-500 dark:text-red-400">搜索失败，请稍后重试</div>'
@@ -1825,7 +1817,6 @@
         await api.saveLatestPlayed(latestPlayed)
         showToast(`已从最近播放中移除《${song.name}》`)
       } catch (err) {
-        console.error("保存最近播放失败:", err)
         showToast("移除失败")
       }
     }
@@ -2395,24 +2386,6 @@
       })
     }
 
-    // 导入歌单
-    const importPlaylistBtnModal = document.getElementById(
-      "importPlaylistBtnModal"
-    )
-    if (importPlaylistBtnModal) {
-      importPlaylistBtnModal.addEventListener("click", async () => {
-        const result = await api.importPlaylist()
-        if (result.success) {
-          diyPlaylists = result.playlists
-          renderPlaylistSidebar()
-          if (playlistEditModal) playlistEditModal.classList.add("hidden")
-          showToast("歌单导入成功")
-        } else {
-          showToast(`导入失败：${result.error}`)
-        }
-      })
-    }
-
     // 封面上传
     if (coverUpload) {
       coverUpload.addEventListener("change", (e) => {
@@ -2491,7 +2464,6 @@
             if (playlistEditModal) playlistEditModal.classList.add("hidden")
             currentEditingPlaylistId = null
           } catch (err) {
-            console.error("保存自建歌单失败:", err)
             showToast("歌单修改失败")
           }
         } else {
@@ -2515,6 +2487,7 @@
             name: name,
             description: description,
             coverPath: coverPath,
+            coverData: currentCover, // 保存封面图片数据
             songs: [],
             createdAt: new Date().toISOString(),
           }
@@ -2529,7 +2502,6 @@
             showToast(`已创建歌单：${name}`)
             if (playlistEditModal) playlistEditModal.classList.add("hidden")
           } catch (err) {
-            console.error("保存自建歌单失败:", err)
             showToast("歌单创建失败")
           }
         }
@@ -2542,18 +2514,165 @@
     const importLocalBtn = document.getElementById("importLocalBtn")
     if (importLocalBtn) {
       importLocalBtn.addEventListener("click", async () => {
-        const filePaths = await api.openFileDialog()
-        if (filePaths && filePaths.length > 0) {
-          const result = await api.importLocalSongs(filePaths)
-          if (result.success) {
-            localSongs = await api.readLocalSongs()
-            const localCountEl = document.getElementById("localCount")
-            if (localCountEl) localCountEl.textContent = localSongs.length
-            showLocalSongs()
-            showToast(`成功导入 ${result.songs.length} 首本地歌曲`)
-          } else {
-            showToast(`导入失败：${result.message}`)
+        const result = await api.importLocalSongs()
+        if (result.success) {
+          localSongs = await api.readLocalSongs()
+          const localCountEl = document.getElementById("localCount")
+          if (localCountEl) localCountEl.textContent = localSongs.length
+          showLocalSongs()
+          showToast(`成功导入 ${result.songs.length} 首本地歌曲`)
+        } else {
+          showToast(`导入失败：${result.message}`)
+        }
+      })
+    }
+
+    // 导入用户信息
+    const importUserInfoBtn = document.getElementById("importUserInfoBtn")
+    if (importUserInfoBtn) {
+      importUserInfoBtn.addEventListener("click", async () => {
+        const result = await api.importUserInfo()
+        if (result.success) {
+          showToast("导入成功，页面将刷新")
+          // 页面会在导入成功后自动刷新
+        } else {
+          showToast(`导入失败：${result.message}`)
+        }
+      })
+    }
+
+    // 导出用户信息
+    const exportUserInfoBtn = document.getElementById("exportUserInfoBtn")
+    if (exportUserInfoBtn) {
+      exportUserInfoBtn.addEventListener("click", async () => {
+        const result = await api.exportUserInfo()
+        if (result.success) {
+          showToast(`导出成功：${result.path}`)
+        } else {
+          showToast(`导出失败：${result.message}`)
+        }
+      })
+    }
+
+    // 导入歌单
+    const importPlaylistBtnModal = document.getElementById(
+      "importPlaylistBtnModal"
+    )
+    if (importPlaylistBtnModal) {
+      importPlaylistBtnModal.addEventListener("click", async () => {
+        try {
+          // 导入Capacitor插件
+          const { FilePicker } =
+            await import("@capawesome/capacitor-file-picker")
+
+          // 选择文件
+          const result = await FilePicker.pickFiles({
+            types: ["application/json"],
+            multiple: false,
+          })
+
+          if (!result || !result.files || result.files.length === 0) {
+            showToast("未选择文件")
+            return
           }
+
+          const file = result.files[0]
+
+          // 读取文件内容
+          const { Filesystem } = await import("@capacitor/filesystem")
+          let readResult
+          try {
+            readResult = await Filesystem.readFile({
+              path: file.path,
+            })
+          } catch (e) {
+            const fileName = file.path.split("/").pop()
+            readResult = await Filesystem.readFile({
+              path: fileName,
+              directory: Filesystem.Directory.Documents,
+            })
+          }
+
+          // 解析JSON
+          const playlistData = JSON.parse(readResult.data)
+
+          // 验证数据格式
+          if (playlistData.name && Array.isArray(playlistData.songs)) {
+            const newPlaylist = {
+              id: `playlist_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              name: playlistData.name,
+              description: playlistData.description || "",
+              coverPath: playlistData.coverPath || "",
+              coverData: playlistData.coverData || "",
+              songs: playlistData.songs || [],
+            }
+
+            // 添加到歌单列表
+            diyPlaylists.push(newPlaylist)
+            api.saveDIYPlaylists(diyPlaylists)
+
+            // 重新渲染歌单列表
+            if (searchResultList) {
+              searchResultList.innerHTML = ""
+              if (diyPlaylists.length === 0) {
+                searchResultList.innerHTML =
+                  '<div class="p-8 text-center text-gray-500 dark:text-gray-400">暂无自定义歌单，点击侧边栏“+”创建</div>'
+              } else {
+                diyPlaylists.forEach((pl) => {
+                  const firstSongCover =
+                    pl.songs.length && pl.songs[0].coverUrl
+                      ? pl.songs[0].coverUrl
+                      : ""
+                  const liItem = document.createElement("li")
+                  liItem.className =
+                    "playlist-item p-4 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 cursor-pointer"
+                  liItem.innerHTML = `
+                    <div class="flex items-center gap-4">
+                      <div class="w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                        ${pl.coverPath ? `<img src="./DIYSongListPage/${pl.coverPath}" class="w-full h-full object-cover">` : firstSongCover ? `<img src="${firstSongCover}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>`}
+                      </div>
+                      <div class="flex-1">
+                        <div class="font-medium dark:text-white">${escapeHtml(pl.name)}</div>
+                        <div class="text-xs text-gray-400">${pl.songs.length}首歌曲</div>
+                      </div>
+                      <div class="text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                      </div>
+                    </div>
+                  `
+                  liItem.addEventListener("dblclick", (e) => {
+                    e.stopPropagation()
+                    showPlaylistDetail(pl)
+                  })
+                  searchResultList.appendChild(liItem)
+                })
+              }
+            }
+
+            // 关闭模态框
+            if (playlistEditModal) {
+              playlistEditModal.classList.add("hidden")
+            }
+
+            showToast(`歌单《${newPlaylist.name}》导入成功`)
+          } else {
+            showToast("歌单文件格式不正确")
+          }
+        } catch (error) {
+          if (error.message && error.message.includes("canceled")) {
+            showToast("操作已取消")
+          } else {
+            showToast(`导入失败: ${error.message}`)
+          }
+        }
+      })
+    }
+
+    // 点击模态框外部关闭
+    if (playlistEditModal) {
+      playlistEditModal.addEventListener("click", (e) => {
+        if (e.target === playlistEditModal) {
+          playlistEditModal.classList.add("hidden")
         }
       })
     }
@@ -2635,14 +2754,20 @@
 
     // 播放列表浮窗
     if (togglePlaylistBtn) {
-      togglePlaylistBtn.addEventListener("click", () => {
-        if (playlistFloat) playlistFloat.classList.toggle("translate-x-full")
+      togglePlaylistBtn.addEventListener("click", (e) => {
+        if (playlistFloat) {
+          // 使用 classList.toggle 切换 translate-x-full 类
+          playlistFloat.classList.toggle("translate-x-full")
+        }
       })
     }
 
     if (closePlaylistBtn) {
       closePlaylistBtn.addEventListener("click", () => {
-        if (playlistFloat) playlistFloat.classList.add("translate-x-full")
+        if (playlistFloat) {
+          // 添加 translate-x-full 类来关闭
+          playlistFloat.classList.add("translate-x-full")
+        }
       })
     }
 
@@ -2772,10 +2897,12 @@
     }
 
     if (searchInput) {
-      searchInput.addEventListener("keypress", (e) => {
+      searchInput.addEventListener("keypress", async (e) => {
         if (e.key === "Enter") {
           const keyword = searchInput.value.trim()
-          unifiedSearch(keyword)
+          if (keyword) {
+            await unifiedSearch(keyword)
+          }
         }
       })
     }
@@ -2800,93 +2927,71 @@
 
   // ========== 初始化数据读取 ==========
   async function initApp() {
-    initDOMElements()
-    bindAllEvents()
-    setupAudioListeners()
-
-    // 绑定底部导航栏事件
-    bindBottomNavEvents()
-
     try {
+      initDOMElements()
+      bindAllEvents()
+      setupAudioListeners()
+
+      // 绑定底部导航栏事件
+      bindBottomNavEvents()
+
+      // 读取播放列表
       const savedPlaylist = await api.readPlaylist()
       if (savedPlaylist && savedPlaylist.length > 0) {
         playQueue = savedPlaylist
         renderPlaylist()
       }
-    } catch (err) {
-      console.error("读取播放列表失败:", err)
-    }
 
-    try {
+      // 读取我喜欢的歌曲
       likedSongs = (await api.readLikedSongs()) || []
       if (likeCount) likeCount.textContent = likedSongs.length
-    } catch (err) {
-      console.error("读取我喜欢的歌曲失败:", err)
-      likedSongs = []
-    }
 
-    try {
+      // 读取关注歌手列表
       followedArtists = (await api.readFollowedArtists()) || []
       const followCountEl = document.getElementById("followCount")
       if (followCountEl) followCountEl.textContent = followedArtists.length
-    } catch (err) {
-      console.error("读取关注歌手列表失败:", err)
-      followedArtists = []
-    }
 
-    try {
+      // 读取自定义歌单
       customPlaylists = (await api.readCustomPlaylists()) || []
-    } catch (err) {
-      console.error("读取自定义歌单失败:", err)
-      customPlaylists = []
-    }
 
-    try {
+      // 读取最近播放
       latestPlayed = (await api.readLatestPlayed()) || []
       if (recentCount) recentCount.textContent = latestPlayed.length
-    } catch (err) {
-      console.error("读取最近播放失败:", err)
-      latestPlayed = []
-    }
 
-    try {
+      // 读取自建歌单
       diyPlaylists = (await api.readDIYPlaylists()) || []
-    } catch (err) {
-      console.error("读取自建歌单失败:", err)
-      diyPlaylists = []
-    }
 
-    try {
+      // 读取搜索历史
       searchHistory = (await api.readSearchHistory()) || []
-    } catch (err) {
-      console.error("读取搜索历史失败:", err)
-      searchHistory = []
-    }
 
-    try {
+      // 读取本地歌曲
       localSongs = (await api.readLocalSongs()) || []
       const localCountEl = document.getElementById("localCount")
       if (localCountEl) localCountEl.textContent = localSongs.length
-    } catch (err) {
-      console.error("读取本地歌曲失败:", err)
-      localSongs = []
-    }
 
-    async function checkUpdateOnStartup() {
-      try {
-        const result = await api.checkForUpdates()
-        if (result && result.success && result.hasUpdate) {
-          showUpdateBadge()
-        }
-      } catch (err) {
-        console.error("启动时检查更新失败:", err)
+      // 检查更新
+      async function checkUpdateOnStartup() {
+        try {
+          const result = await api.checkForUpdates()
+          if (result && result.success && result.hasUpdate) {
+            showUpdateBadge()
+          }
+        } catch (err) {}
       }
-    }
 
-    checkUpdateOnStartup()
+      checkUpdateOnStartup()
 
-    if (searchInput && searchInput.value.trim() !== "") {
-      if (clearSearchBtn) clearSearchBtn.classList.remove("hidden")
+      if (searchInput && searchInput.value.trim() !== "") {
+        if (clearSearchBtn) clearSearchBtn.classList.remove("hidden")
+      }
+
+      // 设置默认专辑封面
+      const defaultCover =
+        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCA1MCA1MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjUiIGN5PSIyNSIgcj0iMjUiIGZpbGw9IiNlZWVlZWUiLz4KPHBhdGggZD0iTTE1IDI1IEwyNSAxNSBMMzUgMjUiIHN0cm9rZT0iIzY2NiIgc3Ryb2tlLXdpZHRoPSIyIi8+CjxwYXRoIGQ9Ik0yNSAxNSBMMjUgMzUiIHN0cm9rZT0iIzY2NiIgc3Ryb2tlLXdpZHRoPSIyIi8+Cjwvc3ZnPgo="
+      if (coverImg) coverImg.src = defaultCover
+      if (lyricsCoverImg) lyricsCoverImg.src = defaultCover
+    } catch (err) {
+      showToast("初始化失败")
     }
   }
 
@@ -2900,9 +3005,7 @@
     const bottomPlaylistBtn = document.getElementById("bottomPlaylistBtn")
 
     if (bottomHomeBtn) {
-      console.log("首页按钮已绑定")
       bottomHomeBtn.addEventListener("click", (e) => {
-        console.log("首页按钮被点击")
         e.preventDefault()
         e.stopPropagation()
         resetBottomNavActive()
@@ -2910,8 +3013,6 @@
         // 返回到搜索结果界面，不聚焦搜索框
         showSearchResults()
       })
-    } else {
-      console.log("首页按钮未找到")
     }
     if (bottomFollowBtn) {
       bottomFollowBtn.addEventListener("click", () => {
@@ -2957,6 +3058,13 @@
         if (playlistDetailSection) playlistDetailSection.classList.add("hidden")
         const sectionTitle = document.querySelector("#searchResultsSection h2")
         if (sectionTitle) sectionTitle.textContent = "自定义歌单"
+        // 显示操作按钮
+        const createPlaylistBtn = document.getElementById("createPlaylistBtn")
+        const importUserInfoBtn = document.getElementById("importUserInfoBtn")
+        const exportUserInfoBtn = document.getElementById("exportUserInfoBtn")
+        if (createPlaylistBtn) createPlaylistBtn.classList.remove("hidden")
+        if (importUserInfoBtn) importUserInfoBtn.classList.remove("hidden")
+        if (exportUserInfoBtn) exportUserInfoBtn.classList.remove("hidden")
         if (loadMoreBtn) loadMoreBtn.style.display = "none"
         if (backToSearchBtn) backToSearchBtn.classList.remove("hidden")
         if (searchResultList) {
@@ -3025,7 +3133,7 @@
             bottomNav.style.transform = "translateY(calc(100%))"
           }
           if (playerContainer) {
-            playerContainer.style.transform = "translateY(calc(100% - 8px))"
+            playerContainer.style.transform = "translateY(calc(100% + 12px))"
           }
           // 更改按钮图标
           const icon = togglePlayerBtn.querySelector("svg")
@@ -3153,8 +3261,6 @@
 
   // ========== 显示搜索结果界面（不聚焦搜索框） ==========
   function showSearchResults() {
-    console.log("showSearchResults被调用")
-
     // 隐藏歌单详情区域，显示搜索结果区域
     if (playlistDetailSection) playlistDetailSection.classList.add("hidden")
     if (searchResultsSection) searchResultsSection.classList.remove("hidden")
@@ -3169,6 +3275,14 @@
     // 重置搜索结果标题为"搜索结果"
     const sectionTitle = document.querySelector("#searchResultsSection h2")
     if (sectionTitle) sectionTitle.textContent = "搜索结果"
+
+    // 隐藏操作按钮
+    const createPlaylistBtn = document.getElementById("createPlaylistBtn")
+    const importUserInfoBtn = document.getElementById("importUserInfoBtn")
+    const exportUserInfoBtn = document.getElementById("exportUserInfoBtn")
+    if (createPlaylistBtn) createPlaylistBtn.classList.add("hidden")
+    if (importUserInfoBtn) importUserInfoBtn.classList.add("hidden")
+    if (exportUserInfoBtn) exportUserInfoBtn.classList.add("hidden")
 
     // 清空搜索结果列表并显示提示
     if (searchResultList) {
@@ -3187,7 +3301,6 @@
 
     // 激活底部导航栏的搜索按钮
     setActiveBottomNav("home")
-    console.log("showSearchResults执行完成")
   }
 
   // 启动应用

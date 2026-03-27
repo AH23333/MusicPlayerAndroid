@@ -577,6 +577,60 @@ function initIpcHandlers() {
     return await update.openDownloadPage(url)
   })
 
+  // 音乐下载相关
+  ipcMain.handle("music-dl-search", async (event, keyword) => {
+    logger.info(`音乐下载搜索，关键词：${keyword}`)
+    try {
+      // 使用Meting API进行搜索
+      const metingUrl = `${API_CONFIGS.metingFallback.url}?server=netease&type=search&id=${encodeURIComponent(keyword)}&limit=20`
+      const metingData = await fetchViaProxy(metingUrl)
+
+      if (metingData && Array.isArray(metingData)) {
+        const songs = metingData
+          .map((item) => {
+            // 从url字段中提取歌曲ID
+            let songId = item.id || item.songid || item.songId || ""
+            if (!songId && item.url) {
+              const idMatch = item.url.match(/id=(\d+)/)
+              if (idMatch && idMatch[1]) {
+                songId = idMatch[1]
+              }
+            }
+            return {
+              id: songId,
+              name: item.name || item.title || "",
+              artist: item.artist || item.singer || "未知歌手",
+              album: item.album || "未知专辑",
+              coverUrl: item.pic || item.cover || "",
+              duration: item.duration || 0,
+              url: item.url || `${API_CONFIGS.neteaseAudioUrl.url}?type=url&id=${songId}`,
+            }
+          })
+          .filter((item) => item.id)
+        return { success: true, songs }
+      }
+      return { success: false, message: "搜索失败" }
+    } catch (error) {
+      logger.error(`音乐下载搜索失败: ${error.message}`)
+      return { success: false, message: error.message }
+    }
+  })
+
+  ipcMain.handle("music-dl-lyric", async (event, songId) => {
+    logger.info(`音乐下载获取歌词，歌曲ID：${songId}`)
+    try {
+      const lyrics = await fetchLyricsById(songId)
+      if (lyrics) {
+        return { success: true, lyrics }
+      } else {
+        return { success: false, message: "获取歌词失败" }
+      }
+    } catch (error) {
+      logger.error(`音乐下载获取歌词失败: ${error.message}`)
+      return { success: false, message: error.message }
+    }
+  })
+
   logger.info("IPC 处理器初始化完成")
 }
 

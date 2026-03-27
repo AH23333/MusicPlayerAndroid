@@ -20,12 +20,12 @@
     "tailwindcss": "^4.2.1"
   },
   "dependencies": {
-    "@capacitor/android": "^8.2.0",
-    "@capacitor/cli": "^8.2.0",
-    "@capacitor/core": "^8.2.0",
-    "@capacitor/filesystem": "^8.1.2",
-    "@capacitor/preferences": "^8.0.1",
-    "@capawesome/capacitor-file-picker": "^8.0.2",
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/cli": "^6.1.0",
+    "@capacitor/core": "^6.1.0",
+    "@capacitor/filesystem": "^6.0.0",
+    "@capacitor/preferences": "^6.0.0",
+    "@capawesome/capacitor-file-picker": "^6.0.0",
     "axios": "^1.6.8",
     "electron-squirrel-startup": "^1.0.0"
   },
