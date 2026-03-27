@@ -1655,15 +1655,26 @@
     const screenWidth = window.innerWidth
     const screenHeight = window.innerHeight
 
+    // 计算二级菜单位置：优先放在父菜单右侧，如果空间不足则放在左侧
     let left = parentRect.right + 5
     let top = parentRect.top
 
-    if (left + subMenuRect.width > screenWidth)
+    // 如果右侧空间不足，则放在左侧
+    if (left + subMenuRect.width > screenWidth) {
       left = parentRect.left - subMenuRect.width - 5
-    if (top + subMenuRect.height > screenHeight)
+    }
+
+    // 确保不超出屏幕边界
+    if (left < 10) left = 10
+    if (left + subMenuRect.width > screenWidth - 10) {
+      left = screenWidth - subMenuRect.width - 10
+    }
+
+    // 垂直位置调整
+    if (top + subMenuRect.height > screenHeight) {
       top = screenHeight - subMenuRect.height - 10
-    left = Math.max(10, left)
-    top = Math.max(10, top)
+    }
+    if (top < 10) top = 10
 
     subMenu.style.left = `${left}px`
     subMenu.style.top = `${top}px`
