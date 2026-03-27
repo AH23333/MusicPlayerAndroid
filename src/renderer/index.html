@@ -87,10 +87,10 @@
       </div>
 
       <!-- 内容区域 -->
-      <div class="flex-1 overflow-y-auto p-6 pb-20">
+      <div class="flex-1 flex flex-col p-6 pb-20 overflow-hidden min-h-0">
         <!-- 搜索结果 -->
-        <div id="searchResultsSection" class="mb-8 hidden">
-          <div class="flex items-center justify-between mb-4">
+        <div id="searchResultsSection" class="flex-1 flex flex-col mb-8 hidden min-h-0">
+          <div class="flex items-center justify-between mb-4 flex-shrink-0">
             <h2 class="text-xl font-bold dark:text-white">搜索结果</h2>
             <!-- 自定义歌单操作按钮，默认隐藏 -->
             <div class="flex gap-2">
@@ -102,25 +102,23 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                新建歌单
               </button>
               <!-- 导入导出用户信息按钮 -->
               <button id="importUserInfoBtn"
                 class="px-3 py-1 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors duration-200 text-sm hidden">
-                导入用户信息
+                导入信息
               </button>
               <button id="exportUserInfoBtn"
                 class="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors duration-200 text-sm hidden dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
-                导出用户信息
+                导出信息
               </button>
             </div>
           </div>
-          <div class="bg-gray-100 rounded-lg overflow-hidden dark:bg-gray-800">
-            <ul id="searchResultList"
-              class="divide-y divide-gray-700 dark:divide-gray-700 max-h-[700px] overflow-y-auto">
+          <div class="bg-gray-100 rounded-lg overflow-hidden dark:bg-gray-800 flex-1 flex flex-col">
+            <ul id="searchResultList" class="divide-y divide-gray-700 dark:divide-gray-700 flex-1 overflow-y-auto">
               <!-- 搜索结果动态渲染 -->
             </ul>
-            <div class="p-4 text-center">
+            <div class="p-4 text-center flex-shrink-0">
               <button id="loadMoreBtn" class="text-primary hover:text-primary/80 transition-colors duration-200 hidden">
                 加载更多
               </button>
@@ -129,8 +127,8 @@
         </div>
 
         <!-- 歌单详情 -->
-        <div id="playlistDetailSection" class="mb-8 hidden">
-          <div class="flex items-center justify-between mb-4">
+        <div id="playlistDetailSection" class="flex-1 flex flex-col mb-8 hidden min-h-0">
+          <div class="flex items-center justify-between mb-4 flex-shrink-0">
             <h2 class="text-xl font-bold dark:text-white" id="playlistDetailTitle">歌单详情</h2>
             <!-- 新增：本地歌单导入按钮，默认隐藏 -->
             <button id="importLocalBtn"
@@ -140,7 +138,7 @@
           </div>
 
           <!-- 歌单信息区域 -->
-          <div class="flex items-center justify-between mb-6" id="playlistInfoArea">
+          <div class="flex items-center justify-between mb-6 flex-shrink-0" id="playlistInfoArea">
             <div class="flex items-center">
               <div class="mr-4" id="playlistCoverContainer">
                 <img id="playlistCoverImg" src="" alt="歌单封面" class="w-20 h-20 rounded-lg shadow-md object-cover"
@@ -176,9 +174,8 @@
             </div>
           </div>
 
-          <div class="bg-gray-100 rounded-lg overflow-hidden dark:bg-gray-800">
-            <ul id="playlistDetailList"
-              class="divide-y divide-gray-700 dark:divide-gray-700 max-h-[700px] overflow-y-auto">
+          <div class="bg-gray-100 rounded-lg overflow-hidden dark:bg-gray-800 flex-1 flex flex-col">
+            <ul id="playlistDetailList" class="divide-y divide-gray-700 dark:divide-gray-700 flex-1 overflow-y-auto">
               <!-- 歌单歌曲动态渲染 -->
             </ul>
           </div>
@@ -343,10 +340,10 @@
               title="倒序播放">⇇</button>
             <button id="singleLoopBtn" data-mode="singleLoop"
               class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-sm"
-              title="单曲循环">↺</button>
+              title="单曲循环">◯</button>
             <button id="listLoopBtn" data-mode="listLoop"
               class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-sm"
-              title="列表循环">∞</button>
+              title="列表循环">↺</button>
             <button id="shuffleBtn" data-mode="shuffle"
               class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-sm"
               title="随机播放">⇄</button>

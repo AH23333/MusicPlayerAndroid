@@ -76,6 +76,17 @@ body {
   background-color: rgba(255, 255, 255, 0.05);
 }
 
+/* 歌单选中状态 */
+.playlist-item.selected {
+  background-color: rgba(0, 0, 0, 0.1) !important; /* 浅色模式下的选中背景，与搜索结果一致 */
+  transition: background-color 0.2s ease;
+}
+
+.dark .playlist-item.selected {
+  background-color: rgba(255, 255, 255, 0.1) !important; /* 深色模式下的选中背景，与搜索结果一致 */
+  transition: background-color 0.2s ease;
+}
+
 /* 播放控制按钮 */
 .player-controls button {
   transition: all 0.2s ease;

@@ -782,7 +782,7 @@
       const emptyMessage = document.createElement("li")
       emptyMessage.className =
         "p-8 text-center text-gray-500 dark:text-gray-400"
-      emptyMessage.textContent = "还没有关注任何歌手，右键点击歌曲可以关注歌手"
+      emptyMessage.textContent = "还没有关注任何歌手，长按歌曲可以关注歌手"
       if (searchResultList) searchResultList.appendChild(emptyMessage)
     } else {
       followedArtists.forEach((artistName, index) => {
@@ -1001,7 +1001,7 @@
         if (index > -1) toastQueue.splice(index, 1)
         updateToastPositions()
       }, 300)
-    }, 3000)
+    }, 1500)
   }
 
   function updateToastPositions() {
@@ -1441,11 +1441,20 @@
   }
 
   function playPlaylist(selectedPlaylist) {
-    console.log("[播放歌单] 歌单歌曲数:", selectedPlaylist.songs.length)
-    if (!selectedPlaylist.songs || selectedPlaylist.songs.length === 0) {
+    console.log("[播放歌单] 被调用，歌单:", selectedPlaylist?.name)
+    if (!selectedPlaylist || !Array.isArray(selectedPlaylist.songs)) {
+      console.error("[播放歌单] 歌单数据无效")
+      showToast("歌单数据无效")
+      return
+    }
+
+    if (selectedPlaylist.songs.length === 0) {
+      console.warn("[播放歌单] 歌单为空")
       showToast("歌单中没有歌曲")
       return
     }
+
+    console.log("[播放歌单] 歌曲数量:", selectedPlaylist.songs.length)
     playQueue = selectedPlaylist.songs.slice()
     renderPlaylist()
     currentSongIndex = 0
@@ -2657,7 +2666,7 @@
                       : ""
                   const liItem = document.createElement("li")
                   liItem.className =
-                    "playlist-item p-4 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 cursor-default"
+                    "playlist-item p-4 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 cursor-default flex items-center justify-between"
 
                   // 创建主体区域
                   const mainArea = document.createElement("div")
@@ -3143,7 +3152,7 @@
                 : ""
             const liItem = document.createElement("li")
             liItem.className =
-              "playlist-item p-4 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 cursor-default"
+              "playlist-item p-4 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 cursor-default flex items-center justify-between"
 
             // 创建主体区域
             const mainArea = document.createElement("div")
@@ -3209,7 +3218,23 @@
     const togglePlayerBtn = document.getElementById("togglePlayerBtn")
     if (togglePlayerBtn) {
       let isPlayerVisible = true
+
+      // 存储默认位置
+      const defaultPosition = {
+        right: "1rem", // 对应 right-4 (16px)
+        top: "50%",
+        transform: "translate-y-1/2",
+      }
+
+      // 长按相关变量
+      let isDragging = false
+      let startX, startY, offsetX, offsetY
+      let defaultCircle = null
+
+      // 点击事件：展开/收起播放器
       togglePlayerBtn.addEventListener("click", () => {
+        if (isDragging) return // 拖动时不触发点击
+
         const bottomNav = document.getElementById("bottomNav")
         // 更通用的选择器，不依赖于具体的bottom-*类
         const playerContainer = document.querySelector(
@@ -3247,6 +3272,173 @@
         }
         isPlayerVisible = !isPlayerVisible
       })
+
+      // 长按开始：创建默认位置的空心圆圈
+      let longPressTimer
+      togglePlayerBtn.addEventListener("mousedown", startLongPress)
+      togglePlayerBtn.addEventListener("touchstart", startLongPress)
+
+      function startLongPress(e) {
+        longPressTimer = setTimeout(() => {
+          isDragging = true
+          createDefaultCircle()
+
+          // 计算初始位置
+          const rect = togglePlayerBtn.getBoundingClientRect()
+          if (e.type === "mousedown") {
+            startX = e.clientX
+            startY = e.clientY
+          } else {
+            // touchstart
+            startX = e.touches[0].clientX
+            startY = e.touches[0].clientY
+          }
+          offsetX = startX - rect.left
+          offsetY = startY - rect.top
+
+          // 添加拖动事件监听器
+          document.addEventListener("mousemove", drag)
+          document.addEventListener("touchmove", drag)
+          document.addEventListener("mouseup", endDrag)
+          document.addEventListener("touchend", endDrag)
+        }, 500) // 500ms 长按
+      }
+
+      // 拖动
+      function drag(e) {
+        if (!isDragging) return
+
+        let clientX, clientY
+        if (e.type === "mousemove") {
+          e.preventDefault()
+          clientX = e.clientX
+          clientY = e.clientY
+        } else {
+          // touchmove
+          clientX = e.touches[0].clientX
+          clientY = e.touches[0].clientY
+        }
+
+        // 计算新位置
+        const newX = clientX - offsetX
+        const newY = clientY - offsetY
+
+        // 限制在屏幕内
+        const screenWidth = window.innerWidth
+        const screenHeight = window.innerHeight
+        const btnWidth = togglePlayerBtn.offsetWidth
+        const btnHeight = togglePlayerBtn.offsetHeight
+
+        const clampedX = Math.max(0, Math.min(newX, screenWidth - btnWidth))
+        const clampedY = Math.max(0, Math.min(newY, screenHeight - btnHeight))
+
+        // 更新按钮位置
+        togglePlayerBtn.style.position = "fixed"
+        togglePlayerBtn.style.right = "auto"
+        togglePlayerBtn.style.top = "auto"
+        togglePlayerBtn.style.transform = "none"
+        togglePlayerBtn.style.left = `${clampedX}px`
+        togglePlayerBtn.style.top = `${clampedY}px`
+      }
+
+      // 拖动结束
+      function endDrag() {
+        if (!isDragging) return
+
+        clearTimeout(longPressTimer)
+        isDragging = false
+
+        // 检查是否靠近默认位置
+        if (isNearDefaultPosition()) {
+          // 吸附到默认位置
+          snapToDefaultPosition()
+        }
+
+        // 移除拖动事件监听器
+        document.removeEventListener("mousemove", drag)
+        document.removeEventListener("touchmove", drag)
+        document.removeEventListener("mouseup", endDrag)
+        document.removeEventListener("touchend", endDrag)
+
+        // 移除默认位置的空心圆圈
+        removeDefaultCircle()
+      }
+
+      // 创建默认位置的空心圆圈
+      function createDefaultCircle() {
+        if (defaultCircle) return
+
+        defaultCircle = document.createElement("div")
+        defaultCircle.className =
+          "fixed right-4 top-1/2 transform -translate-y-1/2 w-12 h-12 rounded-full border-2 border-emerald-500/50 z-30"
+        document.body.appendChild(defaultCircle)
+      }
+
+      // 初始化按钮位置
+      function initButtonPosition() {
+        // 确保按钮初始位置与圆圈一致
+        togglePlayerBtn.style.position = "fixed"
+        togglePlayerBtn.style.left = "auto"
+        togglePlayerBtn.style.top = "50%"
+        togglePlayerBtn.style.right = "16px"
+        togglePlayerBtn.style.transform = "translateY(-50%)"
+        togglePlayerBtn.style.width = "48px"
+        togglePlayerBtn.style.height = "48px"
+      }
+
+      // 初始化按钮位置
+      initButtonPosition()
+
+      // 检查是否靠近默认位置
+      function isNearDefaultPosition() {
+        const rect = togglePlayerBtn.getBoundingClientRect()
+        const screenWidth = window.innerWidth
+        const screenHeight = window.innerHeight
+
+        // 计算默认位置的坐标（与圆圈位置一致）
+        const rightValue = 16 // right-4 对应 16px
+        const defaultX = screenWidth - rect.width - rightValue
+        const defaultY = screenHeight / 2 - rect.height / 2
+
+        // 计算距离
+        const distance = Math.sqrt(
+          Math.pow(rect.left + rect.width / 2 - defaultX, 2) +
+            Math.pow(rect.top + rect.height / 2 - defaultY, 2)
+        )
+
+        // 距离小于 50px 时吸附
+        return distance < 50
+      }
+
+      // 吸附到默认位置
+      function snapToDefaultPosition() {
+        // 清除之前的位置样式
+        togglePlayerBtn.style.position = "fixed"
+        togglePlayerBtn.style.left = "auto"
+        togglePlayerBtn.style.top = "50%"
+        togglePlayerBtn.style.right = "16px"
+        togglePlayerBtn.style.transform = "translateY(-50%)"
+        // 确保与初始样式一致
+        togglePlayerBtn.style.width = "48px"
+        togglePlayerBtn.style.height = "48px"
+      }
+
+      // 移除默认位置的空心圆圈
+      function removeDefaultCircle() {
+        if (defaultCircle && defaultCircle.parentNode) {
+          defaultCircle.parentNode.removeChild(defaultCircle)
+          defaultCircle = null
+        }
+      }
+
+      // 取消长按
+      togglePlayerBtn.addEventListener("mouseup", cancelLongPress)
+      togglePlayerBtn.addEventListener("mouseleave", cancelLongPress)
+      togglePlayerBtn.addEventListener("touchend", cancelLongPress)
+
+      function cancelLongPress() {
+        clearTimeout(longPressTimer)
+      }
     }
   }
 
