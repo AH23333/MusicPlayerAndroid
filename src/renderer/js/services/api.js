@@ -1,5 +1,22 @@
 import storageAdapter from "./storageAdapter.js"
 
+// 辅助函数：安全获取 Capacitor 插件
+async function getCapacitorPlugins() {
+  if (window.Capacitor && window.Capacitor.Plugins) {
+    return window.Capacitor.Plugins
+  }
+  // 等待 Capacitor 初始化
+  return new Promise((resolve) => {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () =>
+        resolve(window.Capacitor.Plugins)
+      )
+    } else {
+      resolve(window.Capacitor.Plugins)
+    }
+  })
+}
+
 // 封装 API 调用
 class ApiService {
   // 搜索音乐
@@ -120,31 +137,148 @@ class ApiService {
   }
 
   // 保存歌单封面
-  async savePlaylistCover(data) {
-    // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-    console.log("保存歌单封面:", data)
-    return { success: false, message: "暂不支持保存封面" }
+  async savePlaylistCover({ playlistId, coverData }) {
+    try {
+      const plugins = await getCapacitorPlugins()
+      if (!plugins) {
+        throw new Error("Capacitor 插件不可用")
+      }
+      const { Filesystem } = plugins
+      const Directory = Filesystem.Directory
+      const base64Data = coverData.split(",")[1] // 去掉 data:image/...;base64,
+      const format = coverData.match(/^data:image\/(\w+);base64,/)[1]
+      const fileName = `${playlistId}.${format}`
+      const filePath = `DIYSongListPage/${fileName}`
+
+      // 确保目录存在
+      try {
+        await Filesystem.mkdir({
+          path: "DIYSongListPage",
+          directory: Directory.Documents,
+          recursive: true,
+        })
+      } catch (error) {
+        // 目录已存在，忽略错误
+      }
+
+      await Filesystem.writeFile({
+        path: filePath,
+        data: base64Data,
+        directory: Directory.Documents,
+      })
+      return { success: true, coverPath: filePath }
+    } catch (error) {
+      console.error("保存歌单封面失败:", error)
+      return { success: false, message: error.message }
+    }
   }
 
   // 导出歌单
   async exportPlaylist(playlist) {
-    // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-    console.log("导出歌单:", playlist)
-    return { success: false, message: "暂不支持导出歌单" }
+    try {
+      const plugins = await getCapacitorPlugins()
+      if (!plugins) {
+        throw new Error("Capacitor 插件不可用")
+      }
+      const { Filesystem } = plugins
+      const Directory = Filesystem.Directory
+      const playlistData = {
+        name: playlist.name,
+        description: playlist.description,
+        coverPath: playlist.coverPath,
+        coverData: playlist.coverData,
+        songs: playlist.songs,
+      }
+      const jsonData = JSON.stringify(playlistData, null, 2)
+      const fileName = `${playlist.name.replace(/[^a-z0-9]/gi, "_")}.json`
+
+      // 确保目录存在
+      try {
+        await Filesystem.mkdir({
+          path: "PlaylistExports",
+          directory: Directory.Documents,
+          recursive: true,
+        })
+      } catch (error) {
+        // 目录已存在，忽略错误
+      }
+
+      const result = await Filesystem.writeFile({
+        path: `PlaylistExports/${fileName}`,
+        data: jsonData,
+        directory: Directory.Documents,
+      })
+      return {
+        success: true,
+        filePath: result.uri,
+        message: `歌单已导出到: PlaylistExports/${fileName}`,
+      }
+    } catch (error) {
+      console.error("导出歌单失败:", error)
+      return { success: false, message: error.message }
+    }
   }
 
   // 导入歌单
   async importPlaylist() {
-    // 简化实现，实际项目中可能需要使用 Capacitor Filesystem 插件
-    console.log("导入歌单")
-    return { success: false, message: "暂不支持导入歌单" }
+    try {
+      const plugins = await getCapacitorPlugins()
+      if (!plugins) {
+        throw new Error("Capacitor 插件不可用")
+      }
+      const { FilePicker } = plugins
+      const { Filesystem } = plugins
+      const result = await FilePicker.pickFiles({
+        types: ["application/json"],
+        multiple: false,
+      })
+      if (!result.files.length) return { success: false, message: "未选择文件" }
+      const file = result.files[0]
+      let readResult
+      try {
+        readResult = await Filesystem.readFile({ path: file.path })
+      } catch {
+        const fileName = file.path.split("/").pop()
+        readResult = await Filesystem.readFile({
+          path: fileName,
+          directory: Filesystem.Directory.Documents,
+        })
+      }
+      const playlistData = JSON.parse(readResult.data)
+      // 验证必要字段
+      if (!playlistData.name || !Array.isArray(playlistData.songs)) {
+        return { success: false, message: "无效的歌单文件" }
+      }
+      const newPlaylist = {
+        id: `playlist_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: playlistData.name,
+        description: playlistData.description || "",
+        coverPath: playlistData.coverPath || "",
+        coverData: playlistData.coverData || "",
+        songs: playlistData.songs || [],
+      }
+      const currentPlaylists = await this.readDIYPlaylists()
+      currentPlaylists.push(newPlaylist)
+      await this.saveDIYPlaylists(currentPlaylists)
+      return { success: true, message: "导入成功", playlist: newPlaylist }
+    } catch (error) {
+      console.error("导入歌单失败:", error)
+      if (error.message && error.message.includes("canceled")) {
+        return { success: false, message: "操作已取消" }
+      }
+      return { success: false, message: error.message }
+    }
   }
 
   // 导出用户信息
   async exportUserInfo() {
     try {
-      // 导入Capacitor插件
-      const { Filesystem, Directory } = await import("@capacitor/filesystem")
+      const plugins = await getCapacitorPlugins()
+      if (!plugins) {
+        throw new Error("Capacitor 插件不可用")
+      }
+      const { Filesystem } = plugins
+      const Directory = Filesystem.Directory
 
       // 收集用户数据
       const userData = {
@@ -179,9 +313,13 @@ class ApiService {
   // 导入用户信息
   async importUserInfo() {
     try {
-      // 导入Capacitor插件
-      const { Filesystem, Directory } = await import("@capacitor/filesystem")
-      const { FilePicker } = await import("@capawesome/capacitor-file-picker")
+      const plugins = await getCapacitorPlugins()
+      if (!plugins) {
+        throw new Error("Capacitor 插件不可用")
+      }
+      const { Filesystem } = plugins
+      const Directory = Filesystem.Directory
+      const { FilePicker } = plugins
 
       // 选择文件
       const result = await FilePicker.pickFiles({
@@ -259,8 +397,13 @@ class ApiService {
   // 导入本地歌曲
   async importLocalSongs() {
     try {
-      // 导入Capacitor插件
-      const { FilePicker } = await import("@capawesome/capacitor-file-picker")
+      const plugins = await getCapacitorPlugins()
+      if (!plugins) {
+        throw new Error("Capacitor 插件不可用")
+      }
+      const { FilePicker } = plugins
+      // 先请求权限（可选）
+      await FilePicker.requestPermissions?.()
 
       // 选择音频文件
       const result = await FilePicker.pickFiles({
@@ -355,9 +498,13 @@ class ApiService {
   // 下载歌曲
   async downloadSong(song) {
     try {
-      // 导入Capacitor插件
-      const { Filesystem, Directory } = await import("@capacitor/filesystem")
-      const { FilePicker } = await import("@capawesome/capacitor-file-picker")
+      const plugins = await getCapacitorPlugins()
+      if (!plugins) {
+        throw new Error("Capacitor 插件不可用")
+      }
+      const { Filesystem } = plugins
+      const Directory = Filesystem.Directory
+      const { FilePicker } = plugins
 
       // 让用户选择保存目录
       let saveDirectory

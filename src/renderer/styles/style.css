@@ -166,13 +166,19 @@ input[type="range"]::-moz-range-thumb {
 /* 播放列表浮窗 */
 #playlistFloat {
   top: 60px;
-  bottom: 160px;
+  bottom: 152px;
   right: 0;
-  width: 280px;
+  width: 200px;
   height: auto;
   z-index: 60;
   /* 移除 transform 样式，由 Tailwind 类控制 */
   transition: transform 0.3s ease;
+}
+
+/* 修复滚动速度过快 */
+#searchResultList, #playlistDetailList, #playlistList, .scrollable-area {
+  -webkit-overflow-scrolling: auto;
+  overflow-y: auto;
 }
 
 /* 防止滚动穿透 */

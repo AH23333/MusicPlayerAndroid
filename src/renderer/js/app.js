@@ -388,6 +388,22 @@
     searchHistoryContainer = document.getElementById("searchHistoryContainer")
     searchHistoryList = document.getElementById("searchHistoryList")
 
+    // 获取 createPlaylistBtn 并添加重试逻辑
+    createPlaylistBtn = document.getElementById("createPlaylistBtn")
+    if (!createPlaylistBtn) {
+      console.warn("[初始化] createPlaylistBtn 初次获取失败，尝试延迟获取")
+      setTimeout(() => {
+        createPlaylistBtn = document.getElementById("createPlaylistBtn")
+        console.log("[初始化] 延迟获取 createPlaylistBtn:", createPlaylistBtn)
+        if (createPlaylistBtn) {
+          // 如果延迟获取成功，重新绑定事件
+          bindCreatePlaylistEvent()
+        }
+      }, 500)
+    } else {
+      console.log("[初始化] createPlaylistBtn 获取成功")
+    }
+
     // 检查关键元素
     const criticalElements = [
       { name: "searchBtn", el: searchBtn },
@@ -411,6 +427,53 @@
           audioPlayer = document.getElementById("audioPlayer")
       }
     })
+
+    // 调试日志
+    console.log("[初始化] createPlaylistBtn:", createPlaylistBtn)
+    console.log("[初始化] playlistEditModal:", playlistEditModal)
+
+    // 如果关键元素缺失，输出更详细的调试信息
+    if (!createPlaylistBtn || !playlistEditModal) {
+      console.warn(
+        "[初始化] 关键元素缺失，输出 document.body.innerHTML 片段用于调试"
+      )
+      console.log(
+        "[调试] document.body.innerHTML 前2000字符:",
+        document.body.innerHTML.substring(0, 2000)
+      )
+    }
+
+    console.log("[初始化] 所有元素获取完成")
+  }
+
+  // ========== 绑定创建歌单事件 ==========
+  function bindCreatePlaylistEvent() {
+    if (createPlaylistBtn) {
+      console.log("[新建歌单] 按钮已找到，绑定事件")
+      createPlaylistBtn.addEventListener("click", () => {
+        console.log("[新建歌单] 按钮被点击")
+        if (playlistName) playlistName.value = ""
+        if (playlistDescription) playlistDescription.value = ""
+        if (coverPreview)
+          coverPreview.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>`
+        currentCover = null
+        currentEditingPlaylistId = null
+        const modalTitle = document.querySelector("#playlistEditModal h2")
+        if (modalTitle) modalTitle.textContent = "创建歌单"
+        const submitBtn = document.querySelector(
+          '#playlistEditForm button[type="submit"]'
+        )
+        if (submitBtn) submitBtn.textContent = "创建"
+        if (playlistEditModal) {
+          playlistEditModal.classList.remove("hidden")
+          console.log("[新建歌单] 模态框已显示")
+        } else {
+          console.error("[新建歌单] 模态框不存在")
+        }
+      })
+    } else {
+      console.error("[新建歌单] 按钮未找到")
+    }
   }
 
   // ========== 导出用户信息 ==========
@@ -677,9 +740,24 @@
     showPlaylistDetail(recentPlaylist)
   }
 
-  function showLocalSongs() {
-    const localPlaylist = { id: "local", name: "本地和下载", songs: localSongs }
-    showPlaylistDetail(localPlaylist)
+  async function showLocalSongs() {
+    try {
+      localSongs = await api.readLocalSongs()
+      const localPlaylist = {
+        id: "local",
+        name: "本地和下载",
+        songs: localSongs,
+      }
+      showPlaylistDetail(localPlaylist)
+    } catch (error) {
+      console.error("加载本地歌曲失败:", error)
+      const localPlaylist = {
+        id: "local",
+        name: "本地和下载",
+        songs: localSongs,
+      }
+      showPlaylistDetail(localPlaylist)
+    }
   }
 
   function showFollowedArtists() {
@@ -1148,7 +1226,7 @@
         exportPlaylistBtnEl.onclick = async function () {
           const result = await api.exportPlaylist(playlist)
           if (result.success) {
-            showToast(`歌单导出成功：${result.filePath}`)
+            showToast(`歌单导出成功：${result.message}`)
           } else {
             showToast(`导出失败：${result.message}`)
           }
@@ -1363,8 +1441,9 @@
   }
 
   function playPlaylist(selectedPlaylist) {
-    if (selectedPlaylist.songs.length === 0) {
-      showToast("歌单为空，无法播放")
+    console.log("[播放歌单] 歌单歌曲数:", selectedPlaylist.songs.length)
+    if (!selectedPlaylist.songs || selectedPlaylist.songs.length === 0) {
+      showToast("歌单中没有歌曲")
       return
     }
     playQueue = selectedPlaylist.songs.slice()
@@ -2367,24 +2446,8 @@
     // 默认选中顺序播放
     setActiveModeBtn(orderBtn)
 
-    // 创建歌单
-    if (createPlaylistBtn) {
-      createPlaylistBtn.addEventListener("click", () => {
-        if (playlistName) playlistName.value = ""
-        if (playlistDescription) playlistDescription.value = ""
-        if (coverPreview)
-          coverPreview.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>`
-        currentCover = null
-        currentEditingPlaylistId = null
-        const modalTitle = document.querySelector("#playlistEditModal h2")
-        if (modalTitle) modalTitle.textContent = "创建歌单"
-        const submitBtn = document.querySelector(
-          '#playlistEditForm button[type="submit"]'
-        )
-        if (submitBtn) submitBtn.textContent = "创建"
-        if (playlistEditModal) playlistEditModal.classList.remove("hidden")
-      })
-    }
+    // 创建歌单 - 调用封装的函数
+    bindCreatePlaylistEvent()
 
     // 封面上传
     if (coverUpload) {
@@ -2425,14 +2488,15 @@
         }
 
         if (currentEditingPlaylistId) {
-          const targetIndex = diyPlaylists.findIndex(
+          // 更新歌单
+          const targetPlaylist = diyPlaylists.find(
             (p) => p.id === currentEditingPlaylistId
           )
-          if (targetIndex === -1) {
+          if (!targetPlaylist) {
             showToast("歌单不存在")
             return
           }
-          const targetPlaylist = diyPlaylists[targetIndex]
+
           let coverPath = targetPlaylist.coverPath
 
           if (currentCover && currentCover !== targetPlaylist.coverPath) {
@@ -2450,13 +2514,11 @@
           targetPlaylist.name = name
           targetPlaylist.description = description
           if (coverPath) targetPlaylist.coverPath = coverPath
+          targetPlaylist.coverData = currentCover
 
           try {
-            const saveResult = await api.saveDIYPlaylists(diyPlaylists)
-            if (!saveResult) {
-              showToast("保存失败，请检查日志")
-              return
-            }
+            await api.saveDIYPlaylists(diyPlaylists)
+
             if (currentPlaylist && currentPlaylist.id === targetPlaylist.id) {
               showPlaylistDetail(targetPlaylist)
             }
@@ -2467,40 +2529,48 @@
             showToast("歌单修改失败")
           }
         } else {
-          const playlistId = Date.now().toString()
-          let coverPath = ""
-
-          if (currentCover) {
-            const result = await api.savePlaylistCover({
-              playlistId,
-              coverData: currentCover,
-            })
-            if (result.success) {
-              coverPath = result.coverPath
-            } else {
-              showToast("封面保存失败")
-            }
-          }
-
-          const newPlaylist = {
-            id: playlistId,
-            name: name,
-            description: description,
-            coverPath: coverPath,
-            coverData: currentCover, // 保存封面图片数据
-            songs: [],
-            createdAt: new Date().toISOString(),
-          }
-
-          diyPlaylists.push(newPlaylist)
+          // 创建新歌单
           try {
-            const saveResult = await api.saveDIYPlaylists(diyPlaylists)
-            if (!saveResult) {
-              showToast("保存失败，请检查日志")
-              return
+            const playlistId = Date.now().toString()
+            let coverPath = ""
+
+            if (currentCover) {
+              const result = await api.savePlaylistCover({
+                playlistId,
+                coverData: currentCover,
+              })
+              if (result.success) {
+                coverPath = result.coverPath
+              } else {
+                showToast("封面保存失败")
+              }
             }
+
+            const newPlaylist = {
+              id: playlistId,
+              name: name,
+              description: description,
+              coverPath: coverPath,
+              coverData: currentCover, // 保存封面图片数据
+              songs: [],
+              createdAt: new Date().toISOString(),
+            }
+
+            diyPlaylists.push(newPlaylist)
+            await api.saveDIYPlaylists(diyPlaylists)
+
             showToast(`已创建歌单：${name}`)
             if (playlistEditModal) playlistEditModal.classList.add("hidden")
+
+            // 重新加载歌单列表
+            diyPlaylists = await api.readDIYPlaylists()
+            // 调用 loadDIYPlaylists 或直接渲染
+            if (typeof loadDIYPlaylists === "function") {
+              await loadDIYPlaylists()
+            } else {
+              // 若没有 loadDIYPlaylists，则直接调用渲染函数
+              renderDIYPlaylists()
+            }
           } catch (err) {
             showToast("歌单创建失败")
           }
@@ -2525,6 +2595,8 @@
           showToast(`导入失败：${result.message}`)
         }
       })
+    } else {
+      console.warn("[事件绑定] importLocalBtn 未找到")
     }
 
     // 导入用户信息
@@ -2539,6 +2611,8 @@
           showToast(`导入失败：${result.message}`)
         }
       })
+    } else {
+      console.warn("[事件绑定] importUserInfoBtn 未找到")
     }
 
     // 导出用户信息
@@ -2552,6 +2626,8 @@
           showToast(`导出失败：${result.message}`)
         }
       })
+    } else {
+      console.warn("[事件绑定] exportUserInfoBtn 未找到")
     }
 
     // 导入歌单
@@ -2561,55 +2637,11 @@
     if (importPlaylistBtnModal) {
       importPlaylistBtnModal.addEventListener("click", async () => {
         try {
-          // 导入Capacitor插件
-          const { FilePicker } =
-            await import("@capawesome/capacitor-file-picker")
+          const result = await api.importPlaylist()
 
-          // 选择文件
-          const result = await FilePicker.pickFiles({
-            types: ["application/json"],
-            multiple: false,
-          })
-
-          if (!result || !result.files || result.files.length === 0) {
-            showToast("未选择文件")
-            return
-          }
-
-          const file = result.files[0]
-
-          // 读取文件内容
-          const { Filesystem } = await import("@capacitor/filesystem")
-          let readResult
-          try {
-            readResult = await Filesystem.readFile({
-              path: file.path,
-            })
-          } catch (e) {
-            const fileName = file.path.split("/").pop()
-            readResult = await Filesystem.readFile({
-              path: fileName,
-              directory: Filesystem.Directory.Documents,
-            })
-          }
-
-          // 解析JSON
-          const playlistData = JSON.parse(readResult.data)
-
-          // 验证数据格式
-          if (playlistData.name && Array.isArray(playlistData.songs)) {
-            const newPlaylist = {
-              id: `playlist_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              name: playlistData.name,
-              description: playlistData.description || "",
-              coverPath: playlistData.coverPath || "",
-              coverData: playlistData.coverData || "",
-              songs: playlistData.songs || [],
-            }
-
-            // 添加到歌单列表
-            diyPlaylists.push(newPlaylist)
-            api.saveDIYPlaylists(diyPlaylists)
+          if (result.success) {
+            // 重新加载歌单列表
+            diyPlaylists = await api.readDIYPlaylists()
 
             // 重新渲染歌单列表
             if (searchResultList) {
@@ -2625,25 +2657,50 @@
                       : ""
                   const liItem = document.createElement("li")
                   liItem.className =
-                    "playlist-item p-4 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 cursor-pointer"
-                  liItem.innerHTML = `
-                    <div class="flex items-center gap-4">
-                      <div class="w-12 h-12 rounded overflow-hidden flex-shrink-0">
-                        ${pl.coverPath ? `<img src="./DIYSongListPage/${pl.coverPath}" class="w-full h-full object-cover">` : firstSongCover ? `<img src="${firstSongCover}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>`}
-                      </div>
-                      <div class="flex-1">
-                        <div class="font-medium dark:text-white">${escapeHtml(pl.name)}</div>
-                        <div class="text-xs text-gray-400">${pl.songs.length}首歌曲</div>
-                      </div>
-                      <div class="text-gray-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                      </div>
+                    "playlist-item p-4 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 cursor-default"
+
+                  // 创建主体区域
+                  const mainArea = document.createElement("div")
+                  mainArea.className = "flex-1 flex items-center gap-4"
+                  mainArea.innerHTML = `
+                    <div class="w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                      ${pl.coverPath ? `<img src="./DIYSongListPage/${pl.coverPath}" class="w-full h-full object-cover">` : firstSongCover ? `<img src="${firstSongCover}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>`}
+                    </div>
+                    <div class="flex-1">
+                      <div class="font-medium dark:text-white">${escapeHtml(pl.name)}</div>
+                      <div class="text-xs text-gray-400">${pl.songs.length}首歌曲</div>
                     </div>
                   `
-                  liItem.addEventListener("dblclick", (e) => {
+
+                  // 创建图标区域
+                  const iconArea = document.createElement("div")
+                  iconArea.className = "text-gray-400 cursor-pointer p-2"
+                  iconArea.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>`
+
+                  liItem.appendChild(mainArea)
+                  liItem.appendChild(iconArea)
+
+                  // 单击主体区域高亮
+                  mainArea.addEventListener("click", (e) => {
+                    e.stopPropagation()
+                    document
+                      .querySelectorAll(".playlist-item.selected")
+                      .forEach((item) => item.classList.remove("selected"))
+                    liItem.classList.add("selected")
+                  })
+
+                  // 双击主体区域进入详情
+                  mainArea.addEventListener("dblclick", (e) => {
                     e.stopPropagation()
                     showPlaylistDetail(pl)
                   })
+
+                  // 单击图标直接进入详情
+                  iconArea.addEventListener("click", (e) => {
+                    e.stopPropagation()
+                    showPlaylistDetail(pl)
+                  })
+
                   searchResultList.appendChild(liItem)
                 })
               }
@@ -2654,9 +2711,9 @@
               playlistEditModal.classList.add("hidden")
             }
 
-            showToast(`歌单《${newPlaylist.name}》导入成功`)
+            showToast(`歌单《${result.playlist.name}》导入成功`)
           } else {
-            showToast("歌单文件格式不正确")
+            showToast(`导入失败: ${result.message}`)
           }
         } catch (error) {
           if (error.message && error.message.includes("canceled")) {
@@ -2666,6 +2723,8 @@
           }
         }
       })
+    } else {
+      console.warn("[事件绑定] importPlaylistBtnModal 未找到")
     }
 
     // 点击模态框外部关闭
@@ -2969,6 +3028,9 @@
       const localCountEl = document.getElementById("localCount")
       if (localCountEl) localCountEl.textContent = localSongs.length
 
+      // 读取自建歌单
+      diyPlaylists = (await api.readDIYPlaylists()) || []
+
       // 检查更新
       async function checkUpdateOnStartup() {
         try {
@@ -3081,35 +3143,62 @@
                 : ""
             const liItem = document.createElement("li")
             liItem.className =
-              "playlist-item p-4 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 cursor-pointer"
-            liItem.innerHTML = `
-              <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded overflow-hidden flex-shrink-0">
-                  ${
-                    pl.coverPath
-                      ? `<img src="./DIYSongListPage/${pl.coverPath}" class="w-full h-full object-cover">`
-                      : firstSongCover
-                        ? `<img src="${firstSongCover}" class="w-full h-full object-cover">`
-                        : `<svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>`
-                  }
-                </div>
-                <div class="flex-1">
-                  <div class="font-medium dark:text-white">${escapeHtml(pl.name)}</div>
-                  <div class="text-xs text-gray-400">${pl.songs.length}首歌曲</div>
-                </div>
-                <div class="text-gray-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                </div>
+              "playlist-item p-4 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 cursor-default"
+
+            // 创建主体区域
+            const mainArea = document.createElement("div")
+            mainArea.className = "flex-1 flex items-center gap-4"
+            mainArea.innerHTML = `
+              <div class="w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                ${
+                  pl.coverPath
+                    ? `<img src="./DIYSongListPage/${pl.coverPath}" class="w-full h-full object-cover">`
+                    : firstSongCover
+                      ? `<img src="${firstSongCover}" class="w-full h-full object-cover">`
+                      : `<svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>`
+                }
+              </div>
+              <div class="flex-1">
+                <div class="font-medium dark:text-white">${escapeHtml(pl.name)}</div>
+                <div class="text-xs text-gray-400">${pl.songs.length}首歌曲</div>
               </div>
             `
-            liItem.addEventListener("dblclick", (e) => {
+
+            // 创建图标区域
+            const iconArea = document.createElement("div")
+            iconArea.className = "text-gray-400 cursor-pointer p-2"
+            iconArea.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>`
+
+            liItem.appendChild(mainArea)
+            liItem.appendChild(iconArea)
+
+            // 单击主体区域高亮
+            mainArea.addEventListener("click", (e) => {
+              e.stopPropagation()
+              document
+                .querySelectorAll(".playlist-item.selected")
+                .forEach((item) => item.classList.remove("selected"))
+              liItem.classList.add("selected")
+            })
+
+            // 双击主体区域进入详情
+            mainArea.addEventListener("dblclick", (e) => {
               e.stopPropagation()
               showPlaylistDetail(pl)
             })
+
+            // 单击图标直接进入详情
+            iconArea.addEventListener("click", (e) => {
+              e.stopPropagation()
+              showPlaylistDetail(pl)
+            })
+
+            // 右键菜单
             liItem.addEventListener("contextmenu", (e) => {
               e.preventDefault()
               showPlaylistContextMenu(e, pl)
             })
+
             searchResultList.appendChild(liItem)
           })
         }
