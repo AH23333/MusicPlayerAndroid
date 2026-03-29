@@ -17,55 +17,169 @@ function initAppMain() {
 
   // 导入 API 服务
   let api
-  // 创建一个基础的 API 对象作为 fallback，实现完整的导入导出功能
+  // 导入 storageAdapter（用于 fallback api）
+  let storageAdapter = null
+
+  // 创建一个基础的存储适配器作为 fallback（支持 Capacitor 和 localStorage）
+  const fallbackStorage = {
+    capacitorReady: false,
+    initPromise: null,
+
+    async initCapacitor() {
+      if (this.capacitorReady) return
+
+      const checkCapacitor = () => {
+        return (
+          typeof window !== "undefined" &&
+          typeof window.Capacitor !== "undefined" &&
+          window.Capacitor &&
+          window.Capacitor.Plugins &&
+          window.Capacitor.Plugins.Preferences
+        )
+      }
+
+      if (checkCapacitor()) {
+        this.capacitorReady = true
+        console.log("[FallbackStorage] Capacitor 存储已就绪")
+        return
+      }
+
+      const startTime = Date.now()
+      while (!this.capacitorReady && Date.now() - startTime < 5000) {
+        await new Promise((resolve) => setTimeout(resolve, 100))
+        if (checkCapacitor()) {
+          this.capacitorReady = true
+          console.log("[FallbackStorage] Capacitor 存储初始化完成")
+          return
+        }
+      }
+
+      if (!this.capacitorReady) {
+        console.warn("[FallbackStorage] 未检测到 Capacitor，使用 localStorage")
+      }
+    },
+
+    async set(key, value) {
+      await this.initCapacitor()
+      const jsonValue = JSON.stringify(value)
+
+      try {
+        if (this.capacitorReady && window.Capacitor?.Plugins?.Preferences) {
+          await window.Capacitor.Plugins.Preferences.set({
+            key: key,
+            value: jsonValue,
+          })
+          console.log(`[FallbackStorage] 已保存到 Capacitor: ${key}`)
+          try {
+            localStorage.setItem(key, jsonValue)
+          } catch (e) {}
+        } else {
+          localStorage.setItem(key, jsonValue)
+          console.log(`[FallbackStorage] 已保存到 localStorage: ${key}`)
+        }
+        return true
+      } catch (error) {
+        console.error("[FallbackStorage] 保存失败:", error)
+        try {
+          localStorage.setItem(key, jsonValue)
+          return true
+        } catch (e) {
+          return false
+        }
+      }
+    },
+
+    async get(key, defaultValue = []) {
+      await this.initCapacitor()
+      let jsonValue = null
+
+      try {
+        if (this.capacitorReady && window.Capacitor?.Plugins?.Preferences) {
+          const result = await window.Capacitor.Plugins.Preferences.get({ key })
+          jsonValue = result.value
+          if (jsonValue) {
+            console.log(`[FallbackStorage] 从 Capacitor 读取: ${key}`)
+          }
+        }
+
+        if (!jsonValue) {
+          jsonValue = localStorage.getItem(key)
+          if (jsonValue) {
+            console.log(`[FallbackStorage] 从 localStorage 读取: ${key}`)
+            if (this.capacitorReady && window.Capacitor?.Plugins?.Preferences) {
+              try {
+                await window.Capacitor.Plugins.Preferences.set({
+                  key,
+                  value: jsonValue,
+                })
+                console.log(`[FallbackStorage] 数据已迁移到 Capacitor: ${key}`)
+              } catch (e) {}
+            }
+          }
+        }
+
+        return jsonValue ? JSON.parse(jsonValue) : defaultValue
+      } catch (error) {
+        console.error("[FallbackStorage] 读取失败:", error)
+        try {
+          const data = localStorage.getItem(key)
+          return data ? JSON.parse(data) : defaultValue
+        } catch (e) {
+          return defaultValue
+        }
+      }
+    },
+  }
+
+  // 创建 fallback API 对象
   api = {
     savePlaylist: async function (playlist) {
-      return false
+      return await fallbackStorage.set("PlayList", playlist)
     },
     readPlaylist: async function () {
-      return []
+      return await fallbackStorage.get("PlayList", [])
     },
     readLikedSongs: async function () {
-      return []
+      return await fallbackStorage.get("MyFavorite", [])
     },
     saveLikedSongs: async function (likedSongs) {
-      return false
+      return await fallbackStorage.set("MyFavorite", likedSongs)
     },
     readFollowedArtists: async function () {
-      return []
+      return await fallbackStorage.get("FollowedArtists", [])
     },
     saveFollowedArtists: async function (artists) {
-      return false
+      return await fallbackStorage.set("FollowedArtists", artists)
     },
     readCustomPlaylists: async function () {
-      return []
+      return await fallbackStorage.get("CustomPlaylists", [])
     },
     saveCustomPlaylists: async function (playlists) {
-      return false
+      return await fallbackStorage.set("CustomPlaylists", playlists)
     },
     readDIYPlaylists: async function () {
-      return []
+      return await fallbackStorage.get("DIYSongList", [])
     },
     saveDIYPlaylists: async function (playlists) {
-      return false
+      return await fallbackStorage.set("DIYSongList", playlists)
     },
     readLatestPlayed: async function () {
-      return []
+      return await fallbackStorage.get("Latest", [])
     },
     saveLatestPlayed: async function (songs) {
-      return false
+      return await fallbackStorage.set("Latest", songs)
     },
     readSearchHistory: async function () {
-      return []
+      return await fallbackStorage.get("SearchHistory", [])
     },
     saveSearchHistory: async function (history) {
-      return false
+      return await fallbackStorage.set("SearchHistory", history)
     },
     readLocalSongs: async function () {
-      return []
+      return await fallbackStorage.get("LocalSongs", [])
     },
     saveLocalSongs: async function (songs) {
-      return false
+      return await fallbackStorage.set("LocalSongs", songs)
     },
     searchMusic: async function (keyword, offset = 0) {
       return { result: { songs: [] } }
@@ -3949,7 +4063,6 @@ function initAppMain() {
   })
 
   // 初始化 storageAdapter
-  let storageAdapter
   // 创建一个默认的存储适配器作为 fallback
   storageAdapter = {
     set: (key, value) => {
