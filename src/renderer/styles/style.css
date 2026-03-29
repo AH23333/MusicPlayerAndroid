@@ -289,13 +289,30 @@ input[type="range"]::-moz-range-thumb {
   background-color: #e5e7eb;
   color: #1f2937;
   border-radius: 9999px;
-  width: 44px;
-  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 44px;
   min-height: 44px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+#prevBtn:hover,
+#nextBtn:hover,
+.play-mode-group button:hover,
+#togglePlaylistBtn:hover {
+  background-color: #d1d5db;
+  transform: scale(1.05);
+}
+
+#prevBtn:active,
+#nextBtn:active,
+.play-mode-group button:active,
+#togglePlaylistBtn:active {
+  transform: scale(0.95);
 }
 
 .dark #prevBtn,
@@ -306,15 +323,28 @@ input[type="range"]::-moz-range-thumb {
   color: #f3f4f6;
 }
 
+.dark #prevBtn:hover,
+.dark #nextBtn:hover,
+.dark .play-mode-group button:hover,
+.dark #togglePlaylistBtn:hover {
+  background-color: #4b5563;
+}
+
 /* 播放模式按钮高亮状态 */
 .play-mode-group button.active {
-  background-color: #1DB954;
-  color: #ffffff;
+  background-color: #1DB954 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(29, 185, 84, 0.4);
+}
+
+.play-mode-group button.active svg {
+  color: #ffffff !important;
 }
 
 .dark .play-mode-group button.active {
-  background-color: #1DB954;
-  color: #ffffff;
+  background-color: #1DB954 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(29, 185, 84, 0.4);
 }
 
 #bottomNav button.active {
@@ -359,4 +389,347 @@ input[type="range"]::-moz-range-thumb {
 }
 .translate-x-0 {
   transform: translateX(0);
+}
+
+/* ========== 全局美化样式 ========== */
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* 歌词区域隐藏滚动条 */
+.lyrics-scroll-container {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.lyrics-scroll-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+}
+
+/* Toast 提示美化 */
+.toast {
+  position: fixed;
+  bottom: 180px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border-radius: 24px;
+  font-size: 14px;
+  z-index: 9999;
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes toastOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* 歌曲项增强样式 */
+.song-item {
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  border-radius: 8px;
+  margin: 2px 4px;
+  padding: 12px 16px !important;
+}
+
+.song-item:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.dark .song-item:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.song-item.selected {
+  background-color: rgba(29, 185, 84, 0.12) !important;
+}
+
+.dark .song-item.selected {
+  background-color: rgba(29, 185, 84, 0.15) !important;
+}
+
+/* 播放列表项样式 */
+.playlist-item {
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  border-radius: 8px;
+  margin: 2px 4px;
+}
+
+.playlist-item:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.dark .playlist-item:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* 歌单选中状态 */
+.playlist-item.selected {
+  background-color: rgba(29, 185, 84, 0.12) !important;
+}
+
+.dark .playlist-item.selected {
+  background-color: rgba(29, 185, 84, 0.15) !important;
+}
+
+/* 按钮通用美化 */
+button {
+  transition: all 0.2s ease;
+}
+
+button:active {
+  transform: scale(0.95);
+}
+
+/* 卡片样式 */
+.card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.dark .card {
+  background: #1f2937;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+/* 模态框美化 */
+#playlistEditModal > div,
+#deleteConfirmModal > div,
+#updateModal > div {
+  border-radius: 16px;
+  animation: modalIn 0.3s ease;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 输入框美化 */
+input[type="text"],
+textarea {
+  transition: all 0.2s ease;
+}
+
+input[type="text"]:focus,
+textarea:focus {
+  box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.2);
+}
+
+/* 播放列表浮窗美化 */
+#playlistFloat {
+  border-radius: 16px 0 0 16px;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+}
+
+/* 底部导航栏美化 */
+#bottomNav {
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+#bottomNav button {
+  transition: all 0.2s ease;
+}
+
+#bottomNav button:active {
+  transform: scale(0.9);
+}
+
+#bottomNav button.active {
+  background: linear-gradient(135deg, rgba(29, 185, 84, 0.1) 0%, rgba(29, 185, 84, 0.05) 100%);
+}
+
+/* 播放器区域美化 */
+.fixed.bottom-0 {
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* 搜索栏美化 */
+#searchInput {
+  transition: all 0.2s ease;
+}
+
+#searchInput:focus {
+  box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.2);
+}
+
+/* 搜索历史容器美化 */
+#searchHistoryContainer {
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  animation: dropdownIn 0.2s ease;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 右键菜单美化 */
+.absolute.bg-white.border,
+.absolute.bg-gray-800.border {
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  animation: menuIn 0.15s ease;
+  overflow: hidden;
+}
+
+@keyframes menuIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.absolute.bg-white.border button,
+.absolute.bg-gray-800.border button {
+  padding: 10px 16px;
+  font-size: 14px;
+}
+
+/* 歌单封面美化 */
+#playlistCoverImg {
+  transition: transform 0.3s ease;
+}
+
+#playlistCoverImg:hover {
+  transform: scale(1.05);
+}
+
+/* 加载动画 */
+.loading-spinner {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(29, 185, 84, 0.3);
+  border-radius: 50%;
+  border-top-color: #1DB954;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 歌词界面背景渐变 */
+#lyricsInterface {
+  background: linear-gradient(180deg, var(--bg-color) 0%, rgba(29, 185, 84, 0.05) 100%);
+}
+
+/* 浮动按钮美化 */
+#togglePlayerBtn {
+  box-shadow: 0 4px 15px rgba(29, 185, 84, 0.4);
+  transition: all 0.3s ease;
+}
+
+#togglePlayerBtn:hover {
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 6px 20px rgba(29, 185, 84, 0.5);
+}
+
+#togglePlayerBtn:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+/* 音频控件美化 */
+audio {
+  filter: contrast(0.9) brightness(1.1);
+  border-radius: 24px;
+}
+
+audio::-webkit-media-controls-panel {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+}
+
+.dark audio::-webkit-media-controls-panel {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+}
+
+/* 下载按钮样式 */
+#downloadCurrentBtn {
+  box-shadow: 0 2px 8px rgba(29, 185, 84, 0.2);
+}
+
+#downloadCurrentBtn:hover {
+  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+}
+
+/* 响应式优化 */
+@media (max-width: 640px) {
+  .song-item {
+    padding: 10px 12px !important;
+    margin: 2px 4px;
+  }
+  
+  #bottomNav button span {
+    font-size: 10px;
+  }
 }

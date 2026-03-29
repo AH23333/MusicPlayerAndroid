@@ -185,7 +185,33 @@ function initAppMain() {
       return { result: { songs: [] } }
     },
     fetchLyrics: async function (songId) {
-      return null
+      if (!songId) return null
+      try {
+        const lyricUrl = `https://api.qijieya.cn/meting/?server=netease&type=lrc&id=${songId}`
+        const response = await fetch(lyricUrl)
+        const text = await response.text()
+        if (text.trim().startsWith("[")) {
+          return { lrc: text, tlrc: "" }
+        }
+        try {
+          const json = JSON.parse(text)
+          if (typeof json === "string") {
+            return { lrc: json, tlrc: "" }
+          }
+          if (json.lrc && json.lrc.lyric) {
+            return { lrc: json.lrc.lyric, tlrc: json.tlrc?.lyric || "" }
+          }
+          if (json.lyric) {
+            return { lrc: json.lyric, tlrc: json.tlyric || "" }
+          }
+          return { lrc: json.lrc || json.lyrics || "", tlrc: json.tlrc || "" }
+        } catch (e) {
+          return { lrc: text, tlrc: "" }
+        }
+      } catch (error) {
+        console.error("[FallbackAPI] 获取歌词失败:", error)
+        return null
+      }
     },
     savePlaylistCover: async function (data) {
       return { success: false, message: "保存封面失败" }
@@ -416,7 +442,68 @@ function initAppMain() {
       return { success: false, message: "删除本地歌曲失败" }
     },
     downloadSong: async function (song) {
-      return { success: false, message: "下载歌曲失败" }
+      try {
+        if (!song || !song.id) {
+          return { success: false, message: "歌曲信息无效" }
+        }
+
+        showToast(`正在获取《${song.name}》下载链接...`)
+
+        let audioUrl = song.url
+        if (!audioUrl || !audioUrl.startsWith("http")) {
+          audioUrl = `https://api.qijieya.cn/meting/?type=url&id=${song.id}`
+        }
+
+        console.log("下载链接:", audioUrl)
+
+        const response = await fetch(audioUrl)
+        if (!response.ok) {
+          throw new Error(`获取音频失败: ${response.status}`)
+        }
+
+        const blob = await response.blob()
+        const fileName = `${song.name.replace(/[<>:"/\\|?*]/g, "_")}.mp3`
+
+        if (window.Capacitor?.Plugins?.Filesystem) {
+          try {
+            const reader = new FileReader()
+            return new Promise((resolve) => {
+              reader.onloadend = async () => {
+                try {
+                  const base64Data = reader.result.split(",")[1]
+                  const result =
+                    await window.Capacitor.Plugins.Filesystem.writeFile({
+                      path: fileName,
+                      data: base64Data,
+                      directory: "DOCUMENTS",
+                      recursive: false,
+                    })
+                  console.log("文件保存成功:", result.uri)
+                  showToast(`《${song.name}》已保存到 Documents 文件夹`)
+                  resolve({ success: true, message: `已保存: ${fileName}` })
+                } catch (fsError) {
+                  console.error("Capacitor 文件保存失败:", fsError)
+                  showToast(`保存失败，尝试浏览器下载...`)
+                  downloadViaBrowser(blob, fileName, song.name)
+                  resolve({ success: true, message: "已通过浏览器下载" })
+                }
+              }
+              reader.readAsDataURL(blob)
+            })
+          } catch (capError) {
+            console.error("Capacitor 不可用:", capError)
+            downloadViaBrowser(blob, fileName, song.name)
+            return { success: true, message: "已通过浏览器下载" }
+          }
+        } else {
+          downloadViaBrowser(blob, fileName, song.name)
+          return { success: true, message: "已通过浏览器下载" }
+        }
+      } catch (error) {
+        console.error("下载歌曲失败:", error)
+        showToast(`下载失败: ${error.message}`, "error")
+        return { success: false, message: error.message }
+      }
     },
     openFileDialog: async function () {
       return []
@@ -817,6 +904,17 @@ function initAppMain() {
           }
           renderCustomPlaylists()
 
+          // 更新计数器
+          if (likeCount) likeCount.textContent = likedSongs.length
+          if (recentCount) recentCount.textContent = latestPlayed.length
+          const followCountEl = document.getElementById("followCount")
+          if (followCountEl) followCountEl.textContent = followedArtists.length
+
+          // 刷新侧边栏歌单列表
+          if (typeof renderPlaylistSidebar === "function") {
+            renderPlaylistSidebar()
+          }
+
           // 如果当前在歌单详情页，重新渲染详情
           if (
             playlistDetailSection &&
@@ -1026,13 +1124,18 @@ function initAppMain() {
   function renderSearchHistory() {
     if (!searchHistoryList) return
     searchHistoryList.innerHTML = ""
-    searchHistory.forEach((item) => {
+    searchHistory.forEach((item, index) => {
       const li = document.createElement("li")
       li.className =
-        "p-3 hover:bg-gray-100 cursor-pointer transition-colors duration-200 dark:hover:bg-gray-700"
-      li.textContent = item
-      li.addEventListener("click", async () => {
+        "p-3 hover:bg-gray-100 cursor-pointer transition-colors duration-200 dark:hover:bg-gray-700 flex items-center justify-between group"
+
+      const textSpan = document.createElement("span")
+      textSpan.className = "flex-1 truncate"
+      textSpan.textContent = item
+      textSpan.addEventListener("click", async (e) => {
+        e.stopPropagation()
         if (searchInput) searchInput.value = item
+        if (clearSearchBtn) clearSearchBtn.classList.remove("hidden")
         if (searchHistoryContainer)
           searchHistoryContainer.classList.add("hidden")
         const keyword = item.trim()
@@ -1040,6 +1143,24 @@ function initAppMain() {
           await unifiedSearch(keyword)
         }
       })
+
+      const deleteBtn = document.createElement("button")
+      deleteBtn.className =
+        "ml-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+      deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>`
+      deleteBtn.addEventListener("click", async (e) => {
+        e.stopPropagation()
+        searchHistory.splice(index, 1)
+        try {
+          await api.saveSearchHistory(searchHistory)
+        } catch (err) {
+          console.error("保存搜索历史失败:", err)
+        }
+        renderSearchHistory()
+      })
+
+      li.appendChild(textSpan)
+      li.appendChild(deleteBtn)
       searchHistoryList.appendChild(li)
     })
   }
@@ -1314,6 +1435,22 @@ function initAppMain() {
     })
   }
 
+  // ========== 浏览器下载辅助函数 ==========
+  function downloadViaBrowser(blob, fileName, songName) {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = fileName
+    a.style.display = "none"
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => {
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }, 100)
+    showToast(`《${songName}》下载成功`)
+  }
+
   // ========== Toast 功能 ==========
   let toastQueue = []
   function showToast(message) {
@@ -1382,9 +1519,28 @@ function initAppMain() {
         '<div class="lyrics-loading">🎵 歌词加载中...</div>'
     }
     try {
-      const lyrics = await api.fetchLyrics(song.songId)
-      if (lyrics && (lyrics.lrc || lyrics.tlrc)) {
-        renderLyrics(lyrics.lrc || lyrics.tlrc, song.songId)
+      // 优先使用 songId，如果没有则使用 id
+      const songId = song.songId || song.id
+      console.log("[歌词加载] 歌曲信息:", song.name, "ID:", songId)
+
+      if (!songId) {
+        console.error("[歌词加载] 歌曲ID缺失")
+        if (lyricsArea) {
+          lyricsArea.innerHTML =
+            '<div class="lyrics-empty">🎵 无法获取歌曲ID</div>'
+        }
+        return
+      }
+
+      const lyrics = await api.fetchLyrics(songId)
+      console.log("[歌词加载] 获取结果:", lyrics ? "成功" : "失败")
+
+      if (lyrics && lyrics.lrc) {
+        console.log("[歌词加载] 歌词内容长度:", lyrics.lrc.length)
+        renderLyrics(lyrics.lrc, songId)
+      } else if (lyrics && lyrics.tlrc) {
+        console.log("[歌词加载] 使用翻译歌词")
+        renderLyrics(lyrics.tlrc, songId)
       } else {
         if (lyricsArea) {
           lyricsArea.innerHTML =
@@ -1392,6 +1548,7 @@ function initAppMain() {
         }
       }
     } catch (err) {
+      console.error("[歌词加载] 错误:", err)
       if (lyricsArea) {
         lyricsArea.innerHTML = '<div class="lyrics-error">😔 歌词加载失败</div>'
       }
@@ -1605,7 +1762,13 @@ function initAppMain() {
         playlistCoverContainer.innerHTML = `<img id="playlistCoverImg" class="w-24 h-24 rounded-lg shadow-md object-cover" src="" alt="歌单封面" />`
         const playlistCoverImg = document.getElementById("playlistCoverImg")
 
-        if (playlist.coverPath && playlist.coverPath !== "") {
+        // 优先使用自定义封面数据，其次使用封面路径，最后使用第一首歌的封面
+        if (playlist.coverData) {
+          if (playlistCoverImg) {
+            playlistCoverImg.src = playlist.coverData
+            playlistCoverImg.style.display = "block"
+          }
+        } else if (playlist.coverPath && playlist.coverPath !== "") {
           if (playlistCoverImg) {
             playlistCoverImg.src = getCoverPath(playlist.coverPath)
             playlistCoverImg.style.display = "block"
@@ -1802,12 +1965,16 @@ function initAppMain() {
     const cancelBtn = document.getElementById("cancelDeleteBtn")
 
     if (confirmBtn) {
-      confirmBtn.onclick = () => {
+      confirmBtn.onclick = async () => {
         const index = diyPlaylists.findIndex((p) => p.id === playlist.id)
         if (index > -1) {
           diyPlaylists.splice(index, 1)
-          api.saveDIYPlaylists(diyPlaylists)
+          await api.saveDIYPlaylists(diyPlaylists)
+
+          // 刷新歌单列表
+          renderCustomPlaylists()
           renderPlaylistSidebar()
+
           if (currentPlaylist && currentPlaylist.id === playlist.id) {
             backToSearch()
           }
@@ -2092,53 +2259,98 @@ function initAppMain() {
       if (playlistDetailSection) playlistDetailSection.classList.add("hidden")
       if (backToSearchBtn) backToSearchBtn.classList.add("hidden")
 
-      const url = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=0&limit=20`
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-          Referer: "https://music.163.com/",
-          Origin: "https://music.163.com/",
-        },
-      })
-      const data = await response.json()
-      const rawSongs = data.result?.songs || []
+      let tracks = []
+      let usedMetingFallback = false
 
-      if (rawSongs.length === 0) {
-        if (searchResultList)
-          searchResultList.innerHTML =
-            '<div class="p-10 text-center text-gray-500 dark:text-gray-400">未找到相关歌曲</div>'
-        if (loadMoreBtn) loadMoreBtn.style.display = "none"
-        return
+      // 尝试使用 cloudsearch API
+      try {
+        const url = `https://163api.qijieya.cn/cloudsearch?keywords=${encodeURIComponent(keyword)}&offset=0&limit=20`
+        const response = await fetch(url, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            Referer: "https://music.163.com/",
+            Origin: "https://music.163.com/",
+          },
+        })
+        const data = await response.json()
+        const rawSongs = data.result?.songs || []
+
+        if (rawSongs.length > 0) {
+          // 转换为包含播放地址的完整歌曲对象
+          tracks = rawSongs
+            .map((song) => {
+              if (window.helpers && window.helpers.mapNeteaseSongToTrack) {
+                return window.helpers.mapNeteaseSongToTrack(song)
+              } else {
+                if (!song || !song.id) return null
+                return {
+                  id: song.id.toString(),
+                  songId: song.id.toString(),
+                  name: song.name?.trim() ?? "未知歌曲",
+                  artist: (song.ar && song.ar[0]?.name) || "未知歌手",
+                  album: song.al?.name?.trim() ?? "未知专辑",
+                  coverUrl: song.al?.picUrl?.replace("http:", "https:") ?? "",
+                  duration: song.dt ?? 0,
+                  url: `https://api.qijieya.cn/meting/?type=url&id=${song.id}`,
+                }
+              }
+            })
+            .filter((t) => t !== null)
+        }
+      } catch (cloudError) {
+        console.warn("CloudSearch API 失败，尝试 Meting API:", cloudError)
       }
 
-      // 转换为包含播放地址的完整歌曲对象
-      const tracks = rawSongs
-        .map((song) => {
-          // 尝试使用 helpers 中的转换函数（如果存在）
-          if (window.helpers && window.helpers.mapNeteaseSongToTrack) {
-            return window.helpers.mapNeteaseSongToTrack(song)
-          } else {
-            // 降级手动构造
-            if (!song || !song.id) return null
-            return {
-              id: song.id.toString(),
-              songId: song.id.toString(),
-              name: song.name?.trim() ?? "未知歌曲",
-              artist: (song.ar && song.ar[0]?.name) || "未知歌手",
-              album: song.al?.name?.trim() ?? "未知专辑",
-              coverUrl: song.al?.picUrl?.replace("http:", "https:") ?? "",
-              duration: song.dt ?? 0,
-              url: `https://api.qijieya.cn/meting/?type=url&id=${song.id}`,
-            }
+      // 如果 cloudsearch 没有结果，尝试 Meting API
+      if (tracks.length === 0) {
+        console.log("尝试使用 Meting API 搜索...")
+        try {
+          const metingUrl = `https://api.qijieya.cn/meting/?server=netease&type=search&id=${encodeURIComponent(keyword)}&limit=20`
+          const metingResponse = await fetch(metingUrl)
+          const metingData = await metingResponse.json()
+
+          if (Array.isArray(metingData) && metingData.length > 0) {
+            usedMetingFallback = true
+            tracks = metingData.map((song) => {
+              // 从 URL 中提取歌曲 ID
+              let songId = song.id || song.url_id
+              if (!songId && song.url) {
+                const idMatch = song.url.match(/id=(\d+)/)
+                if (idMatch) songId = idMatch[1]
+              }
+              if (!songId && song.lrc) {
+                const idMatch = song.lrc.match(/id=(\d+)/)
+                if (idMatch) songId = idMatch[1]
+              }
+              if (!songId) {
+                songId = Math.random().toString(36).substr(2, 9)
+              }
+
+              return {
+                id: songId.toString(),
+                songId: songId.toString(),
+                name: song.name || song.title || "未知歌曲",
+                artist: song.artist || song.author || "未知歌手",
+                album: song.album || "未知专辑",
+                coverUrl: song.pic?.replace("http:", "https:") || "",
+                duration: 0,
+                url:
+                  song.url ||
+                  `https://api.qijieya.cn/meting/?type=url&id=${songId}`,
+              }
+            })
+            console.log(`Meting API 返回 ${tracks.length} 首歌曲`)
           }
-        })
-        .filter((t) => t !== null)
+        } catch (metingError) {
+          console.error("Meting API 也失败:", metingError)
+        }
+      }
 
       if (tracks.length === 0) {
         if (searchResultList)
           searchResultList.innerHTML =
-            '<div class="p-10 text-center text-gray-500 dark:text-gray-400">无法解析歌曲数据</div>'
+            '<div class="p-10 text-center text-gray-500 dark:text-gray-400">未找到相关歌曲</div>'
         if (loadMoreBtn) loadMoreBtn.style.display = "none"
         return
       }
@@ -2939,17 +3151,11 @@ function initAppMain() {
           try {
             const playlistId = Date.now().toString()
             let coverPath = ""
+            let coverData = currentCover
 
+            // 如果有自定义封面，直接使用 base64 数据，不需要额外保存
             if (currentCover) {
-              const result = await api.savePlaylistCover({
-                playlistId,
-                coverData: currentCover,
-              })
-              if (result.success) {
-                coverPath = result.coverPath
-              } else {
-                showToast("封面保存失败")
-              }
+              coverData = currentCover
             }
 
             const newPlaylist = {
@@ -2957,7 +3163,7 @@ function initAppMain() {
               name: name,
               description: description,
               coverPath: coverPath,
-              coverData: currentCover, // 保存封面图片数据
+              coverData: coverData,
               songs: [],
               createdAt: new Date().toISOString(),
             }
@@ -2968,16 +3174,18 @@ function initAppMain() {
             showToast(`已创建歌单：${name}`)
             if (playlistEditModal) playlistEditModal.classList.add("hidden")
 
-            // 重新加载歌单列表
-            diyPlaylists = await api.readDIYPlaylists()
-            // 调用 loadDIYPlaylists 或直接渲染
-            if (typeof loadDIYPlaylists === "function") {
-              await loadDIYPlaylists()
-            } else {
-              // 若没有 loadDIYPlaylists，则直接调用渲染函数
-              renderDIYPlaylists()
-            }
+            // 重置表单和封面
+            if (playlistName) playlistName.value = ""
+            if (playlistDescription) playlistDescription.value = ""
+            currentCover = null
+            if (coverPreview) coverPreview.src = ""
+            currentEditingPlaylistId = null
+
+            // 刷新歌单列表
+            renderCustomPlaylists()
+            renderPlaylistSidebar()
           } catch (err) {
+            console.error("创建歌单失败:", err)
             showToast("歌单创建失败")
           }
         }
@@ -3027,6 +3235,25 @@ function initAppMain() {
           if (recentCount) recentCount.textContent = latestPlayed.length
           const followCountEl = document.getElementById("followCount")
           if (followCountEl) followCountEl.textContent = followedArtists.length
+
+          // 刷新自定义歌单列表
+          resetBottomNavActive()
+          const bottomPlaylistBtn = document.getElementById("bottomPlaylistBtn")
+          if (bottomPlaylistBtn) {
+            bottomPlaylistBtn.classList.add("active")
+          }
+          if (typeof renderCustomPlaylists === "function") {
+            renderCustomPlaylists()
+          }
+
+          // 如果当前在歌单详情页，重新渲染详情
+          if (
+            playlistDetailSection &&
+            !playlistDetailSection.classList.contains("hidden") &&
+            currentPlaylist
+          ) {
+            showPlaylistDetail(currentPlaylist)
+          }
 
           showToast("导入成功")
         } else {
@@ -3246,7 +3473,6 @@ function initAppMain() {
     if (closePlaylistBtn) {
       closePlaylistBtn.addEventListener("click", () => {
         if (playlistFloat) {
-          // 添加 translate-x-full 类来关闭
           playlistFloat.classList.add("translate-x-full")
         }
       })
@@ -3575,9 +3801,16 @@ function initAppMain() {
           "playlist-item p-4 hover:bg-gray-100 transition-colors duration-200 dark:hover:bg-gray-700 cursor-pointer flex items-center justify-between"
         const mainArea = document.createElement("div")
         mainArea.className = "flex-1 flex items-center gap-4"
+
+        // 优先使用自定义封面数据，其次使用封面路径，最后使用第一首歌的封面
+        const coverSrc =
+          pl.coverData ||
+          (pl.coverPath ? getCoverPath(pl.coverPath) : null) ||
+          firstSongCover
+
         mainArea.innerHTML = `
           <div class="w-12 h-12 rounded overflow-hidden flex-shrink-0">
-            ${pl.coverPath ? `<img src="${getCoverPath(pl.coverPath)}" class="w-full h-full object-cover">` : firstSongCover ? `<img src="${firstSongCover}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>`}
+            ${coverSrc ? `<img src="${coverSrc}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>`}
           </div>
           <div class="flex-1">
             <div class="font-medium dark:text-white">${escapeHtml(pl.name)}</div>
@@ -3700,7 +3933,7 @@ function initAppMain() {
             bottomNav.style.transform = "translateY(calc(100%))"
           }
           if (playerContainer) {
-            playerContainer.style.transform = "translateY(calc(100% + 12px))"
+            playerContainer.style.transform = "translateY(calc(100% + 20px))"
           }
           // 更改按钮图标
           const icon = togglePlayerBtn.querySelector("svg")
@@ -4046,7 +4279,7 @@ function initAppMain() {
   // 启动应用
   window.addEventListener("DOMContentLoaded", initApp)
 
-  windowdEventListener("beforeunload", () => {
+  window.addEventListener("beforeunload", () => {
     if (playlistList)
       playlistList.removeEventListener("click", handlePlaylistClick)
     if (searchResultList)
@@ -4061,63 +4294,6 @@ function initAppMain() {
       audioPlayer.removeEventListener("ended", playNextSong)
     }
   })
-
-  // 初始化 storageAdapter
-  // 创建一个默认的存储适配器作为 fallback
-  storageAdapter = {
-    set: (key, value) => {
-      try {
-        // 优先使用 localStorage
-        if (typeof localStorage !== "undefined") {
-          localStorage.setItem(key, JSON.stringify(value))
-          return true
-        } else {
-          console.warn("localStorage 不可用，使用内存存储")
-          // 回退到内存存储
-          window.__appStorage = window.__appStorage || {}
-          window.__appStorage[key] = value
-          return true
-        }
-      } catch (error) {
-        console.error("保存数据失败:", error)
-        return false
-      }
-    },
-    get: (key, defaultValue = []) => {
-      try {
-        // 优先使用 localStorage
-        if (typeof localStorage !== "undefined") {
-          const value = localStorage.getItem(key)
-          return value ? JSON.parse(value) : defaultValue
-        } else {
-          console.warn("localStorage 不可用，使用内存存储")
-          // 回退到内存存储
-          window.__appStorage = window.__appStorage || {}
-          return window.__appStorage[key] || defaultValue
-        }
-      } catch (error) {
-        console.error("读取数据失败:", error)
-        return defaultValue
-      }
-    },
-  }
-
-  // 尝试导入 storageAdapter
-  try {
-    import("./services/storageAdapter.js")
-      .then((module) => {
-        // 使用正确的导入方式，storageAdapter.js 导出的是单例对象
-        storageAdapter = module.default
-        console.log("storageAdapter 导入成功")
-      })
-      .catch((error) => {
-        console.error("导入 storageAdapter 失败:", error)
-        // 保持使用默认的存储适配器
-      })
-  } catch (error) {
-    console.error("初始化 storageAdapter 失败:", error)
-    // 保持使用默认的存储适配器
-  }
 }
 
 // 在 DOM 加载完成后调用初始化函数

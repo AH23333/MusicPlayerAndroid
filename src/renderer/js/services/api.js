@@ -106,17 +106,42 @@ class ApiService {
   // 获取歌词
   async fetchLyrics(songId) {
     console.log("[歌词] 开始获取，歌曲ID:", songId)
+    if (!songId) {
+      console.error("[歌词] 歌曲ID无效")
+      return null
+    }
     try {
       const lyricUrl = `https://api.qijieya.cn/meting/?server=netease&type=lrc&id=${songId}`
+      console.log("[歌词] 请求URL:", lyricUrl)
       const response = await fetch(lyricUrl)
       const text = await response.text()
       console.log("[歌词] 原始响应长度:", text.length)
+      console.log("[歌词] 原始响应前100字符:", text.substring(0, 100))
+
+      // 检查是否是纯文本歌词（以 [ 开头）
+      if (text.trim().startsWith("[")) {
+        console.log("[歌词] 识别为纯文本LRC格式")
+        return { lrc: text, tlrc: "" }
+      }
+
+      // 尝试解析为 JSON
       try {
         const json = JSON.parse(text)
-        console.log("[歌词] 解析为JSON成功，包含lrc字段:", !!json.lrc)
-        return { lrc: json.lrc || json, tlrc: json.tlrc || "" }
+        console.log("[歌词] 解析为JSON成功")
+        // 处理各种可能的JSON格式
+        if (typeof json === "string") {
+          return { lrc: json, tlrc: "" }
+        }
+        if (json.lrc && json.lrc.lyric) {
+          return { lrc: json.lrc.lyric, tlrc: json.tlrc?.lyric || "" }
+        }
+        if (json.lyric) {
+          return { lrc: json.lyric, tlrc: json.tlyric || "" }
+        }
+        return { lrc: json.lrc || json.lyrics || "", tlrc: json.tlrc || "" }
       } catch (e) {
-        console.log("[歌词] 解析为纯文本歌词")
+        // 不是JSON，直接作为歌词文本
+        console.log("[歌词] 非JSON格式，直接作为歌词文本")
         return { lrc: text, tlrc: "" }
       }
     } catch (error) {

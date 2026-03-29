@@ -62,7 +62,7 @@ class StorageAdapter {
   async set(key, value) {
     // 确保初始化完成
     await this.ensureReady()
-    
+
     try {
       const jsonValue = JSON.stringify(value)
 
@@ -102,7 +102,7 @@ class StorageAdapter {
   async get(key, defaultValue = []) {
     // 确保初始化完成
     await this.ensureReady()
-    
+
     try {
       let jsonValue = null
 
@@ -130,7 +130,9 @@ class StorageAdapter {
                 key: key,
                 value: jsonValue,
               })
-              console.log(`[Storage] 数据已迁移到 Capacitor Preferences: ${key}`)
+              console.log(
+                `[Storage] 数据已迁移到 Capacitor Preferences: ${key}`
+              )
             } catch (e) {
               console.warn(`[Storage] 迁移数据失败: ${key}`, e)
             }
@@ -155,7 +157,7 @@ class StorageAdapter {
   async remove(key) {
     // 确保初始化完成
     await this.ensureReady()
-    
+
     try {
       if (this.capacitorReady && this.isCapacitorAvailable()) {
         // 使用 Capacitor Preferences
@@ -174,7 +176,7 @@ class StorageAdapter {
   async clear() {
     // 确保初始化完成
     await this.ensureReady()
-    
+
     try {
       if (this.capacitorReady && this.isCapacitorAvailable()) {
         // 使用 Capacitor Preferences
