@@ -2,13 +2,19 @@
 // 支持 Capacitor Preferences 和浏览器 localStorage
 
 class StorageAdapter {
-  constructor() {
-    this.isCapacitor = typeof window.Capacitor !== "undefined"
+  // 检查 Capacitor 是否可用
+  isCapacitorAvailable() {
+    return (
+      typeof window.Capacitor !== "undefined" &&
+      window.Capacitor &&
+      window.Capacitor.Plugins &&
+      window.Capacitor.Plugins.Preferences
+    )
   }
 
   // 检查环境
   getEnvironment() {
-    if (this.isCapacitor) return "capacitor"
+    if (this.isCapacitorAvailable()) return "capacitor"
     return "browser"
   }
 
@@ -17,12 +23,7 @@ class StorageAdapter {
     try {
       const jsonValue = JSON.stringify(value)
 
-      if (
-        this.isCapacitor &&
-        window.Capacitor &&
-        window.Capacitor.Plugins &&
-        window.Capacitor.Plugins.Preferences
-      ) {
+      if (this.isCapacitorAvailable()) {
         // 使用 Capacitor Preferences
         await window.Capacitor.Plugins.Preferences.set({
           key: key,
@@ -44,12 +45,7 @@ class StorageAdapter {
     try {
       let jsonValue
 
-      if (
-        this.isCapacitor &&
-        window.Capacitor &&
-        window.Capacitor.Plugins &&
-        window.Capacitor.Plugins.Preferences
-      ) {
+      if (this.isCapacitorAvailable()) {
         // 使用 Capacitor Preferences
         const result = await window.Capacitor.Plugins.Preferences.get({
           key: key,
@@ -70,12 +66,7 @@ class StorageAdapter {
   // 删除数据
   async remove(key) {
     try {
-      if (
-        this.isCapacitor &&
-        window.Capacitor &&
-        window.Capacitor.Plugins &&
-        window.Capacitor.Plugins.Preferences
-      ) {
+      if (this.isCapacitorAvailable()) {
         // 使用 Capacitor Preferences
         await window.Capacitor.Plugins.Preferences.remove({ key: key })
       } else {
@@ -92,12 +83,7 @@ class StorageAdapter {
   // 清空所有数据
   async clear() {
     try {
-      if (
-        this.isCapacitor &&
-        window.Capacitor &&
-        window.Capacitor.Plugins &&
-        window.Capacitor.Plugins.Preferences
-      ) {
+      if (this.isCapacitorAvailable()) {
         // 使用 Capacitor Preferences
         await window.Capacitor.Plugins.Preferences.clear()
       } else {

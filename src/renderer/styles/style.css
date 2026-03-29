@@ -64,12 +64,11 @@ body {
 
 /* 播放列表项样式 */
 .playlist-item {
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .playlist-item:hover {
   background-color: rgba(0, 0, 0, 0.05);
-  transform: translateY(-2px);
 }
 
 .dark .playlist-item:hover {

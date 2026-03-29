@@ -2,7 +2,87 @@ const { ipcMain, dialog } = require("electron")
 const logger = require("./services/logger")
 const storage = require("./services/storage")
 const update = require("./services/update")
-const { fetchViaProxy, fetchLyricsById, API_CONFIGS } = require("../../utils")
+
+// API配置
+const API_CONFIGS = {
+  neteaseSearch: { url: "https://163api.qijieya.cn/cloudsearch" },
+  metingFallback: { url: "https://api.qijieya.cn/meting/" },
+  neteaseSongDetail: { url: "https://163api.qijieya.cn/song/detail" },
+  neteaseLyric: { url: "https://163api.qijieya.cn/lyric/new" },
+  neteaseAudioUrl: { url: "https://api.qijieya.cn/meting/" },
+}
+
+// CORS代理请求
+async function fetchViaProxy(targetUrl) {
+  console.log(`发起请求：${targetUrl}`)
+  let text
+
+  // 直连请求
+  try {
+    console.log(`尝试直连请求：${targetUrl}`)
+    const response = await fetch(targetUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        Referer: "https://music.163.com/",
+        Origin: "https://music.163.com/",
+      },
+    })
+    if (!response.ok) throw new Error(`直连失败，状态码：${response.status}`)
+    text = await response.text()
+    console.log(`直连请求成功，返回数据长度：${text.length}`)
+    return JSON.parse(text)
+  } catch (directErr) {
+    // 代理请求
+    console.warn(`直连失败（原因：${directErr.message}），尝试CORS代理`)
+    try {
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
+      console.log(`代理请求地址：${proxyUrl}`)
+      const proxyRes = await fetch(proxyUrl)
+      if (!proxyRes.ok) throw new Error(`代理失败，状态码：${proxyRes.status}`)
+      text = await proxyRes.text()
+      const result = typeof text === "string" ? JSON.parse(text) : text
+      console.log(
+        `代理请求成功，返回数据长度：${JSON.stringify(result).length}`
+      )
+      return result
+    } catch (proxyErr) {
+      console.error(
+        `直连+代理都失败：${proxyErr.message}，目标地址：${targetUrl}`
+      )
+      return null
+    }
+  }
+}
+
+// 获取歌词
+async function fetchLyricsById(songId) {
+  if (!songId) return null
+  // 使用Meting API获取歌词
+  const lyricUrl = `${API_CONFIGS.metingFallback.url}?server=netease&type=lrc&id=${songId}`
+  const lyricData = await fetchViaProxy(lyricUrl)
+
+  if (!lyricData) return null
+
+  // 处理返回的数据
+  let lrc = ""
+  let tlrc = ""
+  const metadata = []
+
+  if (typeof lyricData === "string") {
+    // 如果返回的是字符串，直接作为歌词
+    lrc = lyricData
+  } else if (lyricData.lrc) {
+    // 如果返回的是对象，提取lrc字段
+    lrc = lyricData.lrc
+  }
+
+  return {
+    lrc: lrc || "",
+    tlrc: tlrc || "",
+    metadata: metadata,
+  }
+}
 
 // 同时在 ipcHandlers.js 顶部定义 PAGE_SIZE
 const PAGE_SIZE = 20

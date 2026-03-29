@@ -17,6 +17,45 @@ async function getCapacitorPlugins() {
   })
 }
 
+// 辅助函数：请求存储权限
+async function requestStoragePermissions() {
+  try {
+    const plugins = await getCapacitorPlugins()
+    if (!plugins || !plugins.Permissions) return true // 非 Capacitor 环境直接通过
+    const { Permissions } = plugins
+
+    // 首先检查权限状态
+    let statusResult
+    try {
+      statusResult = await Permissions.checkPermissions({
+        permissions: [
+          "android.permission.READ_EXTERNAL_STORAGE",
+          "android.permission.WRITE_EXTERNAL_STORAGE",
+        ],
+      })
+
+      // 如果已经有权限，直接返回 true
+      if (statusResult.granted) {
+        return true
+      }
+    } catch (statusError) {
+      console.warn("检查权限状态失败", statusError)
+    }
+
+    // 请求权限
+    const result = await Permissions.requestPermissions({
+      permissions: [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+      ],
+    })
+    return result.granted
+  } catch (error) {
+    console.warn("权限请求失败", error)
+    return false
+  }
+}
+
 // 封装 API 调用
 class ApiService {
   // 搜索音乐
@@ -138,13 +177,26 @@ class ApiService {
 
   // 保存歌单封面
   async savePlaylistCover({ playlistId, coverData }) {
+    const hasPermission = await requestStoragePermissions()
+    if (!hasPermission) {
+      // 权限被拒绝，使用 base64 数据作为 fallback
+      return {
+        success: true,
+        coverData: coverData,
+        message: "使用 base64 存储封面（无存储权限）",
+      }
+    }
     try {
       const plugins = await getCapacitorPlugins()
       if (!plugins) {
-        throw new Error("Capacitor 插件不可用")
+        // Capacitor 不可用，使用 base64 数据作为 fallback
+        return {
+          success: true,
+          coverData: coverData,
+          message: "使用 base64 存储封面（Capacitor 不可用）",
+        }
       }
-      const { Filesystem } = plugins
-      const Directory = Filesystem.Directory
+      const { Filesystem, Directory } = plugins
       const base64Data = coverData.split(",")[1] // 去掉 data:image/...;base64,
       const format = coverData.match(/^data:image\/(\w+);base64,/)[1]
       const fileName = `${playlistId}.${format}`
@@ -154,7 +206,7 @@ class ApiService {
       try {
         await Filesystem.mkdir({
           path: "DIYSongListPage",
-          directory: Directory.Documents,
+          directory: "DOCUMENTS",
           recursive: true,
         })
       } catch (error) {
@@ -164,123 +216,30 @@ class ApiService {
       await Filesystem.writeFile({
         path: filePath,
         data: base64Data,
-        directory: Directory.Documents,
+        directory: "DOCUMENTS",
       })
-      return { success: true, coverPath: filePath }
+
+      // 获取完整的文件URI
+      const fileUri = await Filesystem.getUri({
+        path: filePath,
+        directory: "DOCUMENTS",
+      })
+
+      return { success: true, coverPath: filePath, fileUri: fileUri.uri }
     } catch (error) {
       console.error("保存歌单封面失败:", error)
-      return { success: false, message: error.message }
-    }
-  }
-
-  // 导出歌单
-  async exportPlaylist(playlist) {
-    try {
-      const plugins = await getCapacitorPlugins()
-      if (!plugins) {
-        throw new Error("Capacitor 插件不可用")
-      }
-      const { Filesystem } = plugins
-      const Directory = Filesystem.Directory
-      const playlistData = {
-        name: playlist.name,
-        description: playlist.description,
-        coverPath: playlist.coverPath,
-        coverData: playlist.coverData,
-        songs: playlist.songs,
-      }
-      const jsonData = JSON.stringify(playlistData, null, 2)
-      const fileName = `${playlist.name.replace(/[^a-z0-9]/gi, "_")}.json`
-
-      // 确保目录存在
-      try {
-        await Filesystem.mkdir({
-          path: "PlaylistExports",
-          directory: Directory.Documents,
-          recursive: true,
-        })
-      } catch (error) {
-        // 目录已存在，忽略错误
-      }
-
-      const result = await Filesystem.writeFile({
-        path: `PlaylistExports/${fileName}`,
-        data: jsonData,
-        directory: Directory.Documents,
-      })
+      // 保存失败，使用 base64 数据作为 fallback
       return {
         success: true,
-        filePath: result.uri,
-        message: `歌单已导出到: PlaylistExports/${fileName}`,
+        coverData: coverData,
+        message: "使用 base64 存储封面（保存失败）",
       }
-    } catch (error) {
-      console.error("导出歌单失败:", error)
-      return { success: false, message: error.message }
     }
   }
 
-  // 导入歌单
-  async importPlaylist() {
-    try {
-      const plugins = await getCapacitorPlugins()
-      if (!plugins) {
-        throw new Error("Capacitor 插件不可用")
-      }
-      const { FilePicker } = plugins
-      const { Filesystem } = plugins
-      const result = await FilePicker.pickFiles({
-        types: ["application/json"],
-        multiple: false,
-      })
-      if (!result.files.length) return { success: false, message: "未选择文件" }
-      const file = result.files[0]
-      let readResult
-      try {
-        readResult = await Filesystem.readFile({ path: file.path })
-      } catch {
-        const fileName = file.path.split("/").pop()
-        readResult = await Filesystem.readFile({
-          path: fileName,
-          directory: Filesystem.Directory.Documents,
-        })
-      }
-      const playlistData = JSON.parse(readResult.data)
-      // 验证必要字段
-      if (!playlistData.name || !Array.isArray(playlistData.songs)) {
-        return { success: false, message: "无效的歌单文件" }
-      }
-      const newPlaylist = {
-        id: `playlist_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: playlistData.name,
-        description: playlistData.description || "",
-        coverPath: playlistData.coverPath || "",
-        coverData: playlistData.coverData || "",
-        songs: playlistData.songs || [],
-      }
-      const currentPlaylists = await this.readDIYPlaylists()
-      currentPlaylists.push(newPlaylist)
-      await this.saveDIYPlaylists(currentPlaylists)
-      return { success: true, message: "导入成功", playlist: newPlaylist }
-    } catch (error) {
-      console.error("导入歌单失败:", error)
-      if (error.message && error.message.includes("canceled")) {
-        return { success: false, message: "操作已取消" }
-      }
-      return { success: false, message: error.message }
-    }
-  }
-
-  // 导出用户信息
+  // 导出用户信息（选择路径）
   async exportUserInfo() {
     try {
-      const plugins = await getCapacitorPlugins()
-      if (!plugins) {
-        throw new Error("Capacitor 插件不可用")
-      }
-      const { Filesystem } = plugins
-      const Directory = Filesystem.Directory
-
-      // 收集用户数据
       const userData = {
         likedSongs: await this.readLikedSongs(),
         followedArtists: await this.readFollowedArtists(),
@@ -289,94 +248,242 @@ class ApiService {
         latestPlayed: await this.readLatestPlayed(),
         searchHistory: await this.readSearchHistory(),
       }
-
-      // 转换为JSON字符串
       const jsonData = JSON.stringify(userData, null, 2)
+      const fileName = `User.json`
 
-      // 生成文件名
-      const fileName = `user-info-${new Date().toISOString().slice(0, 10)}.json`
+      // 尝试 Capacitor 文件写入
+      if (
+        window.Capacitor &&
+        window.Capacitor.Plugins &&
+        window.Capacitor.Plugins.Filesystem
+      ) {
+        try {
+          // 请求存储权限
+          const hasPermission = await requestStoragePermissions()
+          if (!hasPermission) {
+            return { success: false, message: "需要存储权限才能导出文件" }
+          }
 
-      // 写入文件
-      const result = await Filesystem.writeFile({
-        path: fileName,
-        data: jsonData,
-        directory: Directory.Documents,
-      })
+          const { Filesystem } = window.Capacitor.Plugins
+          const result = await Filesystem.writeFile({
+            path: fileName,
+            data: jsonData,
+            directory: "DOCUMENTS",
+            encoding: "utf8",
+          })
+          // 改进导出提示
+          return {
+            success: true,
+            message: `导出成功：文件已保存至 Documents/${fileName}，请使用文件管理器查看`,
+          }
+        } catch (err) {
+          console.warn("Capacitor 导出失败，回退浏览器下载:", err)
+          // 继续执行浏览器下载 fallback
+        }
+      }
 
-      return { success: true, message: "导出成功", path: result.uri }
+      // 浏览器下载 fallback
+      const blob = new Blob([jsonData], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      return { success: true, message: "导出成功（文件已下载到默认下载路径）" }
     } catch (error) {
       console.error("导出用户信息失败:", error)
-      return { success: false, message: "导出失败: " + error.message }
+      return { success: false, message: error.message }
     }
   }
 
-  // 导入用户信息
+  // 导入用户信息（文件选择 + FileReader）
   async importUserInfo() {
+    return new Promise((resolve) => {
+      const input = document.createElement("input")
+      input.type = "file"
+      input.accept = "application/json"
+      input.onchange = async (e) => {
+        const file = e.target.files[0]
+        if (!file) {
+          resolve({ success: false, message: "未选择文件" })
+          return
+        }
+        const reader = new FileReader()
+        reader.onload = async (event) => {
+          try {
+            const userData = JSON.parse(event.target.result)
+            console.log("导入用户信息:", userData)
+
+            // 导入喜欢的歌曲
+            if (userData.likedSongs) {
+              console.log("导入喜欢的歌曲:", userData.likedSongs.length)
+              await this.saveLikedSongs(userData.likedSongs)
+            }
+
+            // 导入关注的歌手
+            if (userData.followedArtists) {
+              console.log("导入关注的歌手:", userData.followedArtists.length)
+              await this.saveFollowedArtists(userData.followedArtists)
+            }
+
+            // 导入自定义歌单
+            if (userData.customPlaylists) {
+              console.log("导入自定义歌单:", userData.customPlaylists.length)
+              await this.saveCustomPlaylists(userData.customPlaylists)
+            }
+
+            // 导入自建歌单
+            if (userData.diyPlaylists) {
+              console.log("导入自建歌单:", userData.diyPlaylists.length)
+              await this.saveDIYPlaylists(userData.diyPlaylists)
+            }
+
+            // 导入最近播放
+            if (userData.latestPlayed) {
+              console.log("导入最近播放:", userData.latestPlayed.length)
+              await this.saveLatestPlayed(userData.latestPlayed)
+            }
+
+            // 导入搜索历史
+            if (userData.searchHistory) {
+              console.log("导入搜索历史:", userData.searchHistory.length)
+              await this.saveSearchHistory(userData.searchHistory)
+            }
+
+            console.log("所有数据导入完成")
+            // 不需要刷新页面，让调用方处理刷新
+            resolve({ success: true, message: "导入成功" })
+          } catch (error) {
+            console.error("导入用户信息失败:", error)
+            resolve({
+              success: false,
+              message: "解析文件失败: " + error.message,
+            })
+          }
+        }
+        reader.onerror = () => {
+          console.error("读取文件失败")
+          resolve({ success: false, message: "读取文件失败" })
+        }
+        reader.readAsText(file)
+      }
+      input.click()
+    })
+  }
+
+  // 导出歌单（选择路径）
+  async exportPlaylist(playlist) {
     try {
-      const plugins = await getCapacitorPlugins()
-      if (!plugins) {
-        throw new Error("Capacitor 插件不可用")
+      const playlistData = {
+        name: playlist.name,
+        description: playlist.description,
+        coverPath: playlist.coverPath,
+        coverData: playlist.coverData,
+        songs: playlist.songs,
       }
-      const { Filesystem } = plugins
-      const Directory = Filesystem.Directory
-      const { FilePicker } = plugins
+      const jsonData = JSON.stringify(playlistData, null, 2)
+      const fileName = `${playlist.name}.json`
 
-      // 选择文件
-      const result = await FilePicker.pickFiles({
-        types: ["application/json"],
-        multiple: false,
-      })
+      // 尝试 Capacitor 文件写入
+      if (
+        window.Capacitor &&
+        window.Capacitor.Plugins &&
+        window.Capacitor.Plugins.Filesystem
+      ) {
+        try {
+          // 请求存储权限
+          const hasPermission = await requestStoragePermissions()
+          if (!hasPermission) {
+            return { success: false, message: "需要存储权限才能导出文件" }
+          }
 
-      if (!result || !result.files || result.files.length === 0) {
-        return { success: false, message: "未选择文件" }
+          const { Filesystem } = window.Capacitor.Plugins
+          const result = await Filesystem.writeFile({
+            path: fileName,
+            data: jsonData,
+            directory: "DOCUMENTS",
+            encoding: "utf8",
+          })
+          // 改进导出提示
+          return {
+            success: true,
+            message: `导出成功：文件已保存至 Documents/${fileName}，请使用文件管理器查看`,
+          }
+        } catch (err) {
+          console.warn("Capacitor 导出失败，回退浏览器下载:", err)
+          // 继续执行浏览器下载 fallback
+        }
       }
 
-      const file = result.files[0]
-
-      // 读取文件内容
-      let readResult
-      try {
-        // 尝试直接使用路径读取
-        readResult = await Filesystem.readFile({
-          path: file.path,
-        })
-      } catch (e) {
-        // 如果失败，尝试从Documents目录读取
-        const fileName = file.path.split("/").pop()
-        readResult = await Filesystem.readFile({
-          path: fileName,
-          directory: Directory.Documents,
-        })
-      }
-
-      // 解析JSON
-      const userData = JSON.parse(readResult.data)
-
-      // 保存数据（合并策略：如果新数据存在则覆盖，否则保留原有数据）
-      if (userData.likedSongs) await this.saveLikedSongs(userData.likedSongs)
-      if (userData.followedArtists)
-        await this.saveFollowedArtists(userData.followedArtists)
-      if (userData.customPlaylists)
-        await this.saveCustomPlaylists(userData.customPlaylists)
-      if (userData.diyPlaylists)
-        await this.saveDIYPlaylists(userData.diyPlaylists)
-      if (userData.latestPlayed)
-        await this.saveLatestPlayed(userData.latestPlayed)
-      if (userData.searchHistory)
-        await this.saveSearchHistory(userData.searchHistory)
-
-      // 刷新页面
-      window.location.reload()
-
-      return { success: true, message: "导入成功" }
+      // 浏览器下载 fallback
+      const blob = new Blob([jsonData], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      return { success: true, message: "导出成功（文件已下载到默认下载路径）" }
     } catch (error) {
-      console.error("导入用户信息失败:", error)
-      // 处理用户取消选择的情况
-      if (error.message && error.message.includes("canceled")) {
-        return { success: false, message: "操作已取消" }
-      }
-      return { success: false, message: "导入失败: " + error.message }
+      console.error("导出歌单失败:", error)
+      return { success: false, message: error.message }
     }
+  }
+
+  // 导入歌单（文件选择 + FileReader）
+  async importPlaylist() {
+    return new Promise((resolve) => {
+      const input = document.createElement("input")
+      input.type = "file"
+      input.accept = "application/json"
+      input.onchange = async (e) => {
+        const file = e.target.files[0]
+        if (!file) {
+          resolve({ success: false, message: "未选择文件" })
+          return
+        }
+        const reader = new FileReader()
+        reader.onload = async (event) => {
+          try {
+            const playlistData = JSON.parse(event.target.result)
+            if (!playlistData.name || !Array.isArray(playlistData.songs)) {
+              resolve({ success: false, message: "无效的歌单文件" })
+              return
+            }
+            const newPlaylist = {
+              id: `playlist_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              name: playlistData.name,
+              description: playlistData.description || "",
+              coverPath: playlistData.coverPath || "",
+              coverData: playlistData.coverData || "",
+              songs: playlistData.songs || [],
+            }
+            const currentPlaylists = await this.readDIYPlaylists()
+            currentPlaylists.push(newPlaylist)
+            await this.saveDIYPlaylists(currentPlaylists)
+            resolve({
+              success: true,
+              message: "导入成功",
+              playlist: newPlaylist,
+            })
+          } catch (error) {
+            resolve({
+              success: false,
+              message: "解析文件失败: " + error.message,
+            })
+          }
+        }
+        reader.onerror = () =>
+          resolve({ success: false, message: "读取文件失败" })
+        reader.readAsText(file)
+      }
+      input.click()
+    })
   }
 
   // 读取搜索历史
@@ -396,14 +503,19 @@ class ApiService {
 
   // 导入本地歌曲
   async importLocalSongs() {
+    const hasPermission = await requestStoragePermissions()
+    if (!hasPermission) {
+      return { success: false, message: "需要存储权限才能导入本地歌曲" }
+    }
     try {
       const plugins = await getCapacitorPlugins()
       if (!plugins) {
-        throw new Error("Capacitor 插件不可用")
+        return {
+          success: false,
+          message: "Capacitor 插件不可用，无法导入本地歌曲",
+        }
       }
       const { FilePicker } = plugins
-      // 先请求权限（可选）
-      await FilePicker.requestPermissions?.()
 
       // 选择音频文件
       const result = await FilePicker.pickFiles({
@@ -443,12 +555,26 @@ class ApiService {
         }
 
         // 创建歌曲对象
+        // 优先使用 uri（Capacitor 返回的完整 URI，如 content://... 或 file://...）
+        let songUrl = file.uri || file.path
+        // 如果既没有 uri 也没有 path，跳过
+        if (!songUrl) {
+          console.warn("文件缺少 uri 或 path，跳过")
+          continue
+        }
+        // 如果 URL 已经是 content:// 或 file:// 开头，直接使用；否则添加 file:// 前缀
+        if (
+          !songUrl.startsWith("content://") &&
+          !songUrl.startsWith("file://")
+        ) {
+          songUrl = `file://${songUrl}`
+        }
         const newSong = {
           id: Date.now() + Math.random(),
           name: title,
           artist: artist,
           album: "本地专辑",
-          url: file.path,
+          url: songUrl,
           cover: "", // 暂时没有封面
           local: true,
         }
@@ -497,14 +623,16 @@ class ApiService {
 
   // 下载歌曲
   async downloadSong(song) {
+    const hasPermission = await requestStoragePermissions()
+    if (!hasPermission) {
+      return { success: false, message: "需要存储权限才能下载歌曲" }
+    }
     try {
       const plugins = await getCapacitorPlugins()
       if (!plugins) {
-        throw new Error("Capacitor 插件不可用")
+        return { success: false, message: "Capacitor 插件不可用，无法下载歌曲" }
       }
-      const { Filesystem } = plugins
-      const Directory = Filesystem.Directory
-      const { FilePicker } = plugins
+      const { Filesystem, Directory, FilePicker } = plugins
 
       // 让用户选择保存目录
       let saveDirectory
@@ -524,7 +652,7 @@ class ApiService {
         // 确保目录存在
         await Filesystem.mkdir({
           path: saveDirectory,
-          directory: Directory.Documents,
+          directory: "DOCUMENTS",
           recursive: true,
         })
       }
@@ -549,7 +677,7 @@ class ApiService {
       )
 
       // 生成安全的文件名（去除特殊字符）
-      const safeFileName = `${song.name.replace(/[<>"/\\|?*]/g, "")} - ${song.ar[0].name.replace(/[<>"/\\|?*]/g, "")}.mp3`
+      const safeFileName = `${song.name.replace(/[<>"/\\|?*]/g, "")} - ${song.ar ? song.ar[0].name.replace(/[<>"/\\|?*]/g, "") : "未知艺术家"}.mp3`
 
       let filePath
       let writeResult
@@ -567,7 +695,7 @@ class ApiService {
         writeResult = await Filesystem.writeFile({
           path: filePath,
           data: base64Data,
-          directory: Directory.Documents,
+          directory: "DOCUMENTS",
         })
       }
 
@@ -576,10 +704,10 @@ class ApiService {
       const newLocalSong = {
         id: song.id,
         name: song.name,
-        artist: song.ar[0].name,
-        album: song.al.name,
+        artist: song.ar ? song.ar[0].name : "未知艺术家",
+        album: song.al ? song.al.name : "未知专辑",
         url: writeResult.uri,
-        cover: song.al.picUrl,
+        cover: song.al ? song.al.picUrl : "",
       }
       localSongs.push(newLocalSong)
       await this.saveLocalSongs(localSongs)
